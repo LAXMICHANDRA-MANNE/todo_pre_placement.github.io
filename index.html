@@ -406,12 +406,15 @@
                     <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-sm">
-                                    <i class="fas fa-code"></i>
-                                </div>
+                                <img id="lc-avatar-img" src="https://leetcode.com/favicon.ico" class="w-8 h-8 rounded-lg object-cover border border-amber-500/20 shadow-sm bg-white">
                                 <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">LeetCode</h4>
-                                    <span id="lc-status" class="text-[10px] text-slate-400">Not connected</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <h4 class="text-xs font-bold text-slate-900 dark:text-white" id="lc-card-title">LeetCode</h4>
+                                        <a id="lc-profile-link" href="https://leetcode.com" target="_blank" class="text-slate-400 hover:text-amber-500 text-[10px]">
+                                            <i class="fas fa-arrow-up-right-from-square"></i>
+                                        </a>
+                                    </div>
+                                    <span id="lc-status" class="text-[10px] text-slate-400 block truncate max-w-[140px]">Not connected</span>
                                 </div>
                             </div>
                             <span id="lc-rank-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Unlinked</span>
@@ -421,27 +424,32 @@
                             <input 
                                 type="text" 
                                 id="profile-input-leetcode" 
-                                placeholder="LeetCode username" 
+                                placeholder="LeetCode username (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('leetcode', this.value)"
                             >
-                            <button onclick="fetchLeetCodeProfile()" class="px-2.5 py-2 text-xs font-bold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                            <button onclick="fetchLeetCodeProfile()" class="px-2.5 py-2 text-xs font-bold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex-shrink-0" title="Sync LeetCode">
                                 <i class="fas fa-arrow-down-long"></i>
                             </button>
                         </div>
 
-                        <div id="lc-stats-box" class="hidden text-xs space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
-                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
-                                <span>Solved:</span>
-                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-solved">0</span>
+                        <div id="lc-stats-box" class="hidden text-xs space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-full-name">LAXMICHANDRA MANNE</span>
+                                <span class="text-[10px] text-slate-400" id="lc-ranking">Rank: ~</span>
                             </div>
-                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
-                                <span>Ranking:</span>
-                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-ranking">~</span>
-                            </div>
-                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
-                                <span>Acceptance:</span>
-                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-acceptance">0%</span>
+                            
+                            <!-- Submissions breakdown -->
+                            <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                                <div class="p-1 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold">
+                                    Easy: <span id="lc-easy-count" class="font-black">0</span>
+                                </div>
+                                <div class="p-1 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold">
+                                    Med: <span id="lc-med-count" class="font-black">0</span>
+                                </div>
+                                <div class="p-1 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-semibold">
+                                    Hard: <span id="lc-hard-count" class="font-black">0</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -450,12 +458,15 @@
                     <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm">
-                                    <i class="fas fa-chart-simple"></i>
-                                </div>
+                                <img id="cf-avatar-img" src="https://codeforces.org/s/0/favicon-32x32.png" class="w-8 h-8 rounded-lg object-cover border border-blue-500/20 shadow-sm bg-white">
                                 <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">Codeforces</h4>
-                                    <span id="cf-status" class="text-[10px] text-slate-400">Not connected</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <h4 class="text-xs font-bold text-slate-900 dark:text-white">Codeforces</h4>
+                                        <a id="cf-profile-link" href="https://codeforces.com" target="_blank" class="text-slate-400 hover:text-blue-500 text-[10px]">
+                                            <i class="fas fa-arrow-up-right-from-square"></i>
+                                        </a>
+                                    </div>
+                                    <span id="cf-status" class="text-[10px] text-slate-400 block truncate max-w-[140px]">Not connected</span>
                                 </div>
                             </div>
                             <span id="cf-rank-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">Unlinked</span>
@@ -465,11 +476,11 @@
                             <input 
                                 type="text" 
                                 id="profile-input-codeforces" 
-                                placeholder="Codeforces handle" 
+                                placeholder="Codeforces handle (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('codeforces', this.value)"
                             >
-                            <button onclick="fetchCodeforcesProfile()" class="px-2.5 py-2 text-xs font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                            <button onclick="fetchCodeforcesProfile()" class="px-2.5 py-2 text-xs font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex-shrink-0" title="Sync Codeforces">
                                 <i class="fas fa-arrow-down-long"></i>
                             </button>
                         </div>
@@ -490,74 +501,19 @@
                         </div>
                     </div>
 
-                    <!-- 3. CodeChef Profile Card -->
+                    <!-- 3. GitHub Developer Profile Card -->
                     <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold text-sm">
-                                    <i class="fas fa-utensils"></i>
-                                </div>
+                                <img id="gh-avatar-img" src="https://github.githubassets.com/favicons/favicon.png" class="w-8 h-8 rounded-lg object-cover border border-purple-500/20 shadow-sm bg-white">
                                 <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">CodeChef</h4>
-                                    <span class="text-[10px] text-slate-400">Competitive Rating</span>
-                                </div>
-                            </div>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300">Stars</span>
-                        </div>
-
-                        <div class="flex items-center space-x-2">
-                            <input 
-                                type="text" 
-                                id="profile-input-codechef" 
-                                placeholder="CodeChef username" 
-                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
-                                onchange="saveProfileHandle('codechef', this.value)"
-                            >
-                            <a id="cc-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
-                                <i class="fas fa-arrow-up-right-from-square"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- 4. HackerRank Profile Card -->
-                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                                    <i class="fab fa-hackerrank"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">HackerRank</h4>
-                                    <span class="text-[10px] text-slate-400">Badges & Certificates</span>
-                                </div>
-                            </div>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Gold Badges</span>
-                        </div>
-
-                        <div class="flex items-center space-x-2">
-                            <input 
-                                type="text" 
-                                id="profile-input-hackerrank" 
-                                placeholder="HackerRank username" 
-                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
-                                onchange="saveProfileHandle('hackerrank', this.value)"
-                            >
-                            <a id="hr-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                                <i class="fas fa-arrow-up-right-from-square"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- 5. GitHub Developer Profile Card -->
-                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-sm">
-                                    <i class="fab fa-github"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">GitHub</h4>
-                                    <span id="gh-status" class="text-[10px] text-slate-400">Open Source</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <h4 class="text-xs font-bold text-slate-900 dark:text-white">GitHub</h4>
+                                        <a id="gh-profile-link" href="https://github.com" target="_blank" class="text-slate-400 hover:text-purple-500 text-[10px]">
+                                            <i class="fas fa-arrow-up-right-from-square"></i>
+                                        </a>
+                                    </div>
+                                    <span id="gh-status" class="text-[10px] text-slate-400 block truncate max-w-[140px]">Open Source</span>
                                 </div>
                             </div>
                             <span id="gh-repos-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">Repos</span>
@@ -567,13 +523,71 @@
                             <input 
                                 type="text" 
                                 id="profile-input-github" 
-                                placeholder="GitHub username" 
+                                placeholder="GitHub username (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('github', this.value)"
                             >
-                            <button onclick="fetchGitHubProfile()" class="px-2.5 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            <button onclick="fetchGitHubProfile()" class="px-2.5 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex-shrink-0" title="Sync GitHub">
                                 <i class="fas fa-arrow-down-long"></i>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- 4. CodeChef Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fas fa-utensils"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">CodeChef</h4>
+                                    <span class="text-[10px] text-slate-400">Competitive Stars</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300">Division</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-codechef" 
+                                placeholder="CodeChef username (or URL)" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('codechef', this.value)"
+                            >
+                            <a id="cc-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                                <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 5. HackerRank Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fab fa-hackerrank"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">HackerRank</h4>
+                                    <span class="text-[10px] text-slate-400">Badges & Certs</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Gold</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-hackerrank" 
+                                placeholder="HackerRank username (or URL)" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('hackerrank', this.value)"
+                            >
+                            <a id="hr-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                                <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
                         </div>
                     </div>
 
@@ -596,7 +610,7 @@
                             <input 
                                 type="text" 
                                 id="profile-input-tryhackme" 
-                                placeholder="TryHackMe username" 
+                                placeholder="TryHackMe username (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('tryhackme', this.value)"
                             >

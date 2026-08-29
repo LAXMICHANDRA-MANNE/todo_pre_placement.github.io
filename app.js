@@ -22,11 +22,11 @@ let appState = {
     currentTimeframe: 'daily',     // 'daily' | 'weekly' | 'monthly' | 'yearly'
     activityLog: {},               // { 'YYYY-MM-DD': count }
     profiles: {
-        leetcode: { handle: '', solved: 0, easy: 0, medium: 0, hard: 0, ranking: 0, acceptance: 0 },
-        codeforces: { handle: '', rating: 0, maxRating: 0, rank: 'Unrated' },
+        leetcode: { handle: '', name: '', avatar: '', solved: 0, easy: 0, medium: 0, hard: 0, ranking: 0, acceptance: 0 },
+        codeforces: { handle: '', name: '', avatar: '', rating: 0, maxRating: 0, rank: 'Unrated' },
         codechef: { handle: '', stars: 0, rating: 0 },
         hackerrank: { handle: '', badges: 0 },
-        github: { handle: '', repos: 0, avatar: '' },
+        github: { handle: '', name: '', avatar: '', repos: 0 },
         tryhackme: { handle: '', rank: 'Novice' }
     },
     githubToken: '',
@@ -53,6 +53,23 @@ const DOMAIN_ICONS = {
     'backend': 'fa-server'
 };
 
+// Handle & URL Cleaner
+function cleanHandle(input) {
+    if (!input) return '';
+    let clean = input.trim();
+    // Remove trailing slash
+    clean = clean.replace(/\/+$/, '');
+    
+    // If full URL, take last meaningful segment
+    if (clean.includes('/')) {
+        const parts = clean.split('/').filter(p => p && p !== 'u' && p !== 'profile' && p !== 'users' && p !== 'p');
+        clean = parts[parts.length - 1];
+    }
+    // Remove URL query params or hashes
+    clean = clean.split('?')[0].split('#')[0];
+    return clean.trim();
+}
+
 // ==========================================
 // 🚀 APP STARTUP & MULTI-TIER HYDRATION
 // ==========================================
@@ -72,7 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateCloudHUDText();
 });
 
-// View Navigation Switcher (Curriculum vs Analytics Dashboard)
+// View Navigation Switcher
 function switchMainView(viewName) {
     appState.currentMainView = viewName;
     const curriculumSec = document.getElementById('view-section-curriculum');
@@ -100,74 +117,130 @@ function switchMainView(viewName) {
 // ====================================================
 // 📊 CODING & HACKING PROFILE INTELLIGENCE (LIVE APIs)
 // ====================================================
-function saveProfileHandle(platform, value) {
+function saveProfileHandle(platform, rawValue) {
+    const value = cleanHandle(rawValue);
     if (!appState.profiles[platform]) appState.profiles[platform] = {};
-    appState.profiles[platform].handle = value.trim();
+    appState.profiles[platform].handle = value;
     saveState();
 
     if (platform === 'codechef') {
         const btn = document.getElementById('cc-link-btn');
-        if (btn) btn.href = `https://www.codechef.com/users/${value.trim()}`;
+        if (btn) btn.href = `https://www.codechef.com/users/${value}`;
     }
     if (platform === 'hackerrank') {
         const btn = document.getElementById('hr-link-btn');
-        if (btn) btn.href = `https://www.hackerrank.com/${value.trim()}`;
+        if (btn) btn.href = `https://www.hackerrank.com/${value}`;
     }
     if (platform === 'tryhackme') {
         const btn = document.getElementById('thm-link-btn');
-        if (btn) btn.href = `https://tryhackme.com/p/${value.trim()}`;
+        if (btn) btn.href = `https://tryhackme.com/p/${value}`;
     }
 }
 
+// 🟡 LeetCode Live Sync (Multi-Provider Resilient Fetch)
 async function fetchLeetCodeProfile() {
-    const handle = appState.profiles.leetcode.handle || (document.getElementById('profile-input-leetcode') ? document.getElementById('profile-input-leetcode').value.trim() : '');
+    let inputEl = document.getElementById('profile-input-leetcode');
+    let rawHandle = inputEl ? inputEl.value : (appState.profiles.leetcode.handle || '');
+    let handle = cleanHandle(rawHandle);
+
     if (!handle) {
-        showToast("Please enter a LeetCode username.", "error");
+        showToast("Please enter a LeetCode username or profile URL.", "error");
         return;
     }
 
+    if (inputEl) inputEl.value = handle;
+    appState.profiles.leetcode.handle = handle;
+
+    const statusEl = document.getElementById('lc-status');
+    if (statusEl) statusEl.textContent = 'Syncing...';
+
+    let success = false;
+
+    // Strategy 1: Alfa LeetCode API (Render)
     try {
-        const statusEl = document.getElementById('lc-status');
-        if (statusEl) statusEl.textContent = 'Syncing...';
+        const [solvedRes, profileRes] = await Promise.allSettled([
+            fetch(`https://alfa-leetcode-api.onrender.com/${handle}/solved`),
+            fetch(`https://alfa-leetcode-api.onrender.com/${handle}`)
+        ]);
 
-        const res = await fetch(`https://leetcode-stats-api.herokuapp.com/${handle}`);
-        if (!res.ok) throw new Error("LeetCode API Error");
+        let solvedData = solvedRes.status === 'fulfilled' && solvedRes.value.ok ? await solvedRes.value.json() : null;
+        let profileData = profileRes.status === 'fulfilled' && profileRes.value.ok ? await profileRes.value.json() : null;
 
-        const data = await res.json();
-        if (data.status === 'success' || data.totalSolved !== undefined) {
+        if (solvedData && (solvedData.solvedProblem !== undefined || solvedData.totalSolved !== undefined)) {
             appState.profiles.leetcode = {
                 handle,
-                solved: data.totalSolved || 0,
-                easy: data.easySolved || 0,
-                medium: data.mediumSolved || 0,
-                hard: data.hardSolved || 0,
-                ranking: data.ranking || 0,
-                acceptance: data.acceptanceRate || 0
+                name: profileData?.name || handle,
+                avatar: profileData?.avatar || '',
+                school: profileData?.school || '',
+                solved: solvedData.solvedProblem ?? solvedData.totalSolved ?? 0,
+                easy: solvedData.easySolved || 0,
+                medium: solvedData.mediumSolved || 0,
+                hard: solvedData.hardSolved || 0,
+                ranking: profileData?.ranking || 0,
+                acceptance: 0
             };
-            saveState();
-            renderProfileCardsFromState();
-            renderAnalyticsDashboard();
-            showToast(`LeetCode stats synced for ${handle}! 🟡`, "success");
-        } else {
-            throw new Error("User not found");
+            success = true;
         }
     } catch (e) {
-        console.warn("LeetCode fetch error:", e);
+        console.warn("Alfa API error, trying backup proxy...", e);
+    }
+
+    // Strategy 2: Backup LeetCode Proxy
+    if (!success) {
+        try {
+            const res = await fetch(`https://leetcode-stats-api.herokuapp.com/${handle}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success' || data.totalSolved !== undefined) {
+                    appState.profiles.leetcode = {
+                        handle,
+                        name: handle,
+                        avatar: '',
+                        school: '',
+                        solved: data.totalSolved || 0,
+                        easy: data.easySolved || 0,
+                        medium: data.mediumSolved || 0,
+                        hard: data.hardSolved || 0,
+                        ranking: data.ranking || 0,
+                        acceptance: data.acceptanceRate || 0
+                    };
+                    success = true;
+                }
+            }
+        } catch (e) {
+            console.warn("Backup proxy error:", e);
+        }
+    }
+
+    if (success) {
+        saveState();
+        renderProfileCardsFromState();
+        renderAnalyticsDashboard();
+        showToast(`LeetCode stats synced: ${appState.profiles.leetcode.solved} Problems Solved! 🟡`, "success");
+    } else {
+        if (statusEl) statusEl.textContent = 'Sync failed';
         showToast("Could not fetch LeetCode profile. Check username.", "error");
     }
 }
 
+// 🔵 Codeforces Live Sync
 async function fetchCodeforcesProfile() {
-    const handle = appState.profiles.codeforces.handle || (document.getElementById('profile-input-codeforces') ? document.getElementById('profile-input-codeforces').value.trim() : '');
+    let inputEl = document.getElementById('profile-input-codeforces');
+    let rawHandle = inputEl ? inputEl.value : (appState.profiles.codeforces.handle || '');
+    let handle = cleanHandle(rawHandle);
+
     if (!handle) {
         showToast("Please enter a Codeforces handle.", "error");
         return;
     }
 
-    try {
-        const statusEl = document.getElementById('cf-status');
-        if (statusEl) statusEl.textContent = 'Syncing...';
+    if (inputEl) inputEl.value = handle;
+    appState.profiles.codeforces.handle = handle;
 
+    const statusEl = document.getElementById('cf-status');
+    if (statusEl) statusEl.textContent = 'Syncing...';
+
+    try {
         const res = await fetch(`https://codeforces.com/api/user.info?handles=${handle}`);
         const data = await res.json();
 
@@ -175,6 +248,8 @@ async function fetchCodeforcesProfile() {
             const user = data.result[0];
             appState.profiles.codeforces = {
                 handle,
+                name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || handle,
+                avatar: user.titlePhoto || user.avatar || '',
                 rating: user.rating || 0,
                 maxRating: user.maxRating || 0,
                 rank: user.rank || 'Unrated'
@@ -182,41 +257,51 @@ async function fetchCodeforcesProfile() {
             saveState();
             renderProfileCardsFromState();
             renderAnalyticsDashboard();
-            showToast(`Codeforces stats synced for ${handle}! 🔵`, "success");
+            showToast(`Codeforces stats synced: ${user.rating || 'Unrated'} (${user.rank || ''})! 🔵`, "success");
         } else {
             throw new Error("User not found");
         }
     } catch (e) {
         console.warn("Codeforces fetch error:", e);
+        if (statusEl) statusEl.textContent = 'Sync failed';
         showToast("Could not fetch Codeforces profile.", "error");
     }
 }
 
+// 🐙 GitHub Live Sync
 async function fetchGitHubProfile() {
-    const handle = appState.profiles.github.handle || (document.getElementById('profile-input-github') ? document.getElementById('profile-input-github').value.trim() : '');
+    let inputEl = document.getElementById('profile-input-github');
+    let rawHandle = inputEl ? inputEl.value : (appState.profiles.github.handle || '');
+    let handle = cleanHandle(rawHandle);
+
     if (!handle) {
         showToast("Please enter a GitHub username.", "error");
         return;
     }
 
-    try {
-        const statusEl = document.getElementById('gh-status');
-        if (statusEl) statusEl.textContent = 'Syncing...';
+    if (inputEl) inputEl.value = handle;
+    appState.profiles.github.handle = handle;
 
+    const statusEl = document.getElementById('gh-status');
+    if (statusEl) statusEl.textContent = 'Syncing...';
+
+    try {
         const res = await fetch(`https://api.github.com/users/${handle}`);
         if (!res.ok) throw new Error("GitHub User Error");
 
         const data = await res.json();
         appState.profiles.github = {
             handle,
-            repos: data.public_repos || 0,
-            avatar: data.avatar_url || ''
+            name: data.name || handle,
+            avatar: data.avatar_url || '',
+            repos: data.public_repos || 0
         };
         saveState();
         renderProfileCardsFromState();
-        showToast(`GitHub profile synced for ${handle}! 🐙`, "success");
+        showToast(`GitHub profile synced: ${data.public_repos} Repos! 🐙`, "success");
     } catch (e) {
         console.warn("GitHub fetch error:", e);
+        if (statusEl) statusEl.textContent = 'Sync failed';
         showToast("Could not fetch GitHub profile.", "error");
     }
 }
@@ -241,31 +326,54 @@ function renderProfileCardsFromState() {
     const lc = appState.profiles.leetcode;
     const lcInput = document.getElementById('profile-input-leetcode');
     if (lcInput && lc.handle) lcInput.value = lc.handle;
-    if (lc.solved > 0) {
+
+    const lcLink = document.getElementById('lc-profile-link');
+    if (lcLink && lc.handle) lcLink.href = `https://leetcode.com/u/${lc.handle}/`;
+
+    if (lc.solved > 0 || lc.name) {
         const box = document.getElementById('lc-stats-box');
         const status = document.getElementById('lc-status');
         const rankBadge = document.getElementById('lc-rank-badge');
+        const avatarImg = document.getElementById('lc-avatar-img');
+        const fullNameEl = document.getElementById('lc-full-name');
+        const rankingEl = document.getElementById('lc-ranking');
+
         if (box) box.classList.remove('hidden');
-        if (status) status.textContent = `Active Profile (@${lc.handle})`;
+        if (status) status.textContent = `@${lc.handle}`;
+        if (fullNameEl) fullNameEl.textContent = lc.name || lc.handle;
+        if (rankingEl) rankingEl.textContent = lc.ranking ? `Rank #${lc.ranking.toLocaleString()}` : '';
+        if (avatarImg && lc.avatar) avatarImg.src = lc.avatar;
+
         if (rankBadge) {
             rankBadge.textContent = `${lc.solved} Solved`;
             rankBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
         }
-        document.getElementById('lc-solved').textContent = lc.solved;
-        document.getElementById('lc-ranking').textContent = lc.ranking ? `#${lc.ranking.toLocaleString()}` : 'Top 10%';
-        document.getElementById('lc-acceptance').textContent = `${lc.acceptance}%`;
+
+        const easyEl = document.getElementById('lc-easy-count');
+        const medEl = document.getElementById('lc-med-count');
+        const hardEl = document.getElementById('lc-hard-count');
+        if (easyEl) easyEl.textContent = lc.easy || 0;
+        if (medEl) medEl.textContent = lc.medium || 0;
+        if (hardEl) hardEl.textContent = lc.hard || 0;
     }
 
     // Codeforces
     const cf = appState.profiles.codeforces;
     const cfInput = document.getElementById('profile-input-codeforces');
     if (cfInput && cf.handle) cfInput.value = cf.handle;
-    if (cf.rating > 0) {
+
+    const cfLink = document.getElementById('cf-profile-link');
+    if (cfLink && cf.handle) cfLink.href = `https://codeforces.com/profile/${cf.handle}`;
+
+    if (cf.rating > 0 || cf.rank !== 'Unrated') {
         const box = document.getElementById('cf-stats-box');
         const status = document.getElementById('cf-status');
         const rankBadge = document.getElementById('cf-rank-badge');
+        const avatarImg = document.getElementById('cf-avatar-img');
+
         if (box) box.classList.remove('hidden');
-        if (status) status.textContent = `Rating: ${cf.rating}`;
+        if (status) status.textContent = `@${cf.handle}`;
+        if (avatarImg && cf.avatar) avatarImg.src = cf.avatar;
         if (rankBadge) {
             rankBadge.textContent = cf.rank.toUpperCase();
             rankBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
@@ -279,11 +387,18 @@ function renderProfileCardsFromState() {
     const gh = appState.profiles.github;
     const ghInput = document.getElementById('profile-input-github');
     if (ghInput && gh.handle) ghInput.value = gh.handle;
-    if (gh.repos > 0) {
+
+    const ghLink = document.getElementById('gh-profile-link');
+    if (ghLink && gh.handle) ghLink.href = `https://github.com/${gh.handle}`;
+
+    if (gh.repos > 0 || gh.name) {
         const badge = document.getElementById('gh-repos-badge');
         const status = document.getElementById('gh-status');
+        const avatarImg = document.getElementById('gh-avatar-img');
+
         if (badge) badge.textContent = `${gh.repos} Repos`;
         if (status) status.textContent = `@${gh.handle}`;
+        if (avatarImg && gh.avatar) avatarImg.src = gh.avatar;
     }
 
     // CodeChef & HackerRank & TryHackMe inputs
@@ -315,7 +430,6 @@ function renderProfileCardsFromState() {
 function setTimeframeView(timeframe) {
     appState.currentTimeframe = timeframe;
     
-    // Toggle active buttons
     document.querySelectorAll('.tf-btn').forEach(btn => {
         btn.className = 'tf-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all';
     });
@@ -324,7 +438,6 @@ function setTimeframeView(timeframe) {
         activeBtn.className = 'tf-btn px-3 py-1.5 rounded-lg bg-white dark:bg-dark-800 text-slate-900 dark:text-white shadow-sm transition-all';
     }
 
-    // Toggle sections
     document.getElementById('analytics-section-daily').classList.toggle('hidden', timeframe !== 'daily');
     document.getElementById('analytics-section-weekly').classList.toggle('hidden', timeframe !== 'weekly');
     document.getElementById('analytics-section-monthly').classList.toggle('hidden', timeframe !== 'monthly');
@@ -377,10 +490,9 @@ function calculatePlacementReadiness() {
     document.getElementById('score-core-pct').textContent = `${corePct}%`;
     document.getElementById('score-sys-pct').textContent = `${sysPct}%`;
 
-    // LeetCode / CF Bonus
     const lcSolved = appState.profiles.leetcode.solved || 0;
     const cfRating = appState.profiles.codeforces.rating || 0;
-    const profileBonus = Math.min(25, Math.round((lcSolved / 20) + (cfRating / 100)));
+    const profileBonus = Math.min(30, Math.round((lcSolved / 3) + (cfRating / 100)));
 
     const readinessScore = Math.min(100, Math.round((dsaPct * 0.35) + (corePct * 0.25) + (sysPct * 0.20) + profileBonus));
     const scoreEl = document.getElementById('readiness-score');
@@ -394,7 +506,6 @@ function calculatePlacementReadiness() {
         else tierBadge.textContent = "🌱 Foundation Builder";
     }
 
-    // Aggregate Total Solved
     const aggregateSolved = totalCurriculumSolved + lcSolved;
     const aggCountEl = document.getElementById('total-aggregate-solved-count');
     if (aggCountEl) aggCountEl.textContent = aggregateSolved;
@@ -500,7 +611,7 @@ function renderMonthlyTrajectory() {
     });
 }
 
-// 4. Yearly View (365-Day GitHub/LeetCode Activity Heatmap Grid)
+// 4. Yearly View (365-Day Activity Heatmap Grid)
 function renderYearlyHeatmap() {
     const grid = document.getElementById('heatmap-grid');
     if (!grid) return;
@@ -508,7 +619,6 @@ function renderYearlyHeatmap() {
     grid.innerHTML = '';
     const today = new Date();
     
-    // 52 weeks = 52 columns
     for (let w = 51; w >= 0; w--) {
         const weekCol = document.createElement('div');
         weekCol.className = 'flex flex-col gap-1';
@@ -535,7 +645,6 @@ function renderYearlyHeatmap() {
     }
 }
 
-// Log problem activity for today
 function logTodayActivity(increment = true) {
     const today = new Date().toISOString().split('T')[0];
     if (!appState.activityLog) appState.activityLog = {};
@@ -679,7 +788,7 @@ function updateCloudHUDText() {
 // ==========================================
 // 🛡️ LAYER 2: INDEXEDDB PERSISTENCE
 // ==========================================
-const DB_NAME = 'PlacementMasteryDB_v3';
+const DB_NAME = 'PlacementMasteryDB_v4';
 const DB_VERSION = 1;
 const STORE_NAME = 'app_state';
 
@@ -876,7 +985,7 @@ async function initializeMultiTierStorage() {
 
     let loadedFromLocal = false;
     try {
-        const saved = localStorage.getItem('placement_mastery_state_v4');
+        const saved = localStorage.getItem('placement_mastery_state_v5');
         if (saved) {
             const parsed = JSON.parse(saved);
             appState = { ...appState, ...parsed };
@@ -912,7 +1021,7 @@ function saveState() {
 
 function saveToLocalAndIndexedDB() {
     try {
-        localStorage.setItem('placement_mastery_state_v4', JSON.stringify(appState));
+        localStorage.setItem('placement_mastery_state_v5', JSON.stringify(appState));
         saveToIndexedDB(appState);
         updateSyncUIFields();
     } catch (e) {
