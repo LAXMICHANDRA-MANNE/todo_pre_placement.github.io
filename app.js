@@ -1,12 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // State management
-    const state = JSON.parse(localStorage.getItem('mastery_tracker_state')) || {};
-    let activeDomainId = curriculumData.domains[0].id;
-
     const tabsContainer = document.getElementById('tabs-container');
     const contentContainer = document.getElementById('content-container');
     const overallProgressText = document.getElementById('overall-progress-text');
     const overallProgressBar = document.getElementById('overall-progress-bar');
+
+    let activeDomainId = curriculumData.domains[0].id;
+    let state = JSON.parse(localStorage.getItem('mastery_tracker_state')) || {};
 
     function saveState() {
         localStorage.setItem('mastery_tracker_state', JSON.stringify(state));
@@ -15,34 +14,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function init() {
+        // Migration check: if old state format (topic string IDs), clear or ignore. The new format uses domain__level__topic__subtopicIndex
         renderTabs();
         renderDomainContent(activeDomainId);
         updateOverallProgress();
     }
 
-    function getTopicId(domainId, levelName, topicName) {
-        // Create a unique, URL-safe ID for each topic row
-        return `${domainId}__${levelName.replace(/[^a-zA-Z0-9]/g, '')}__${topicName.replace(/[^a-zA-Z0-9]/g, '')}`;
+    function getSubtopicId(domainId, levelName, topicName, subtopicIndex) {
+        return `${domainId}__${levelName.replace(/[^a-zA-Z0-9]/g, '')}__${topicName.replace(/[^a-zA-Z0-9]/g, '')}__${subtopicIndex}`;
     }
 
     function updateOverallProgress() {
-        let totalTopics = 0;
-        let completedTopics = 0;
+        let totalSubtopics = 0;
+        let completedSubtopics = 0;
 
         curriculumData.domains.forEach(domain => {
             domain.levels.forEach(level => {
                 level.topics.forEach(topic => {
-                    totalTopics++;
-                    const topicId = getTopicId(domain.id, level.level, topic.topic);
-                    if (state[topicId]) {
-                        completedTopics++;
-                    }
+                    topic.subtopics.forEach((subtopic, index) => {
+                        totalSubtopics++;
+                        const subId = getSubtopicId(domain.id, level.level, topic.topic, index);
+                        if (state[subId]) {
+                            completedSubtopics++;
+                        }
+                    });
                 });
             });
         });
 
-        const percentage = totalTopics === 0 ? 0 : Math.round((completedTopics / totalTopics) * 100);
-        overallProgressText.textContent = `${percentage}% (${completedTopics} / ${totalTopics})`;
+        const percentage = totalSubtopics === 0 ? 0 : Math.round((completedSubtopics / totalSubtopics) * 100);
+        overallProgressText.textContent = `${percentage}% (${completedSubtopics} / ${totalSubtopics})`;
         overallProgressBar.style.width = `${percentage}%`;
     }
 
@@ -77,9 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Expose for inline onclick
     window.toggleAccordion = toggleAccordion;
-    window.toggleTopic = function(checkboxId, topicId) {
+    window.toggleSubtopic = function(checkboxId, subtopicId) {
         const checkbox = document.getElementById(checkboxId);
-        state[topicId] = checkbox.checked;
+        state[subtopicId] = checkbox.checked;
         saveState();
     };
 
@@ -93,81 +94,91 @@ document.addEventListener('DOMContentLoaded', () => {
             const accordionId = `acc-${domainId}-${levelIndex}`;
             const iconId = `icon-${domainId}-${levelIndex}`;
             
-            // Calculate progress for this level
-            let levelTotal = level.topics.length;
+            // Calculate progress for this level based on subtopics
+            let levelTotal = 0;
             let levelCompleted = 0;
             level.topics.forEach(t => {
-                const tId = getTopicId(domain.id, level.level, t.topic);
-                if (state[tId]) levelCompleted++;
+                t.subtopics.forEach((sub, subIndex) => {
+                    levelTotal++;
+                    const subId = getSubtopicId(domain.id, level.level, t.topic, subIndex);
+                    if (state[subId]) levelCompleted++;
+                });
             });
             const levelPercentage = levelTotal === 0 ? 0 : Math.round((levelCompleted / levelTotal) * 100);
 
             html += `
-                <div class="mb-4 border border-gray-200 rounded-lg">
-                    <button class="w-full px-6 py-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-lg focus:outline-none" onclick="toggleAccordion('${accordionId}', '${iconId}')">
+                <div class="mb-4 border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                    <button class="w-full px-6 py-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 focus:outline-none transition-colors" onclick="toggleAccordion('${accordionId}', '${iconId}')">
                         <div class="flex items-center space-x-4">
                             <span class="text-lg font-bold text-gray-800">${level.level}</span>
-                            <span class="text-sm font-medium text-gray-500 bg-white px-2 py-1 rounded border border-gray-200">${levelCompleted}/${levelTotal} Done</span>
+                            <span class="text-sm font-medium text-gray-500 bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">${levelCompleted}/${levelTotal} Done</span>
                         </div>
                         <i id="${iconId}" class="fas fa-chevron-down text-gray-500"></i>
                     </button>
                     
                     <div id="${accordionId}" class="accordion-content ${levelPercentage > 0 && levelPercentage < 100 ? 'expanded' : ''}">
-                        <div class="p-6">
-                            <div class="w-full bg-gray-200 rounded-full h-1.5 mb-4">
-                                <div class="bg-red-400 h-1.5 rounded-full" style="width: ${levelPercentage}%"></div>
+                        <div class="p-6 bg-white">
+                            <div class="w-full bg-gray-200 rounded-full h-2 mb-6 shadow-inner">
+                                <div class="bg-red-500 h-2 rounded-full transition-all duration-500" style="width: ${levelPercentage}%"></div>
                             </div>
                             
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-left text-sm whitespace-nowrap">
-                                    <thead class="uppercase tracking-wider border-b-2 border-gray-200 bg-gray-50 text-gray-600">
-                                        <tr>
-                                            <th scope="col" class="px-6 py-3 w-16 text-center">Status</th>
-                                            <th scope="col" class="px-6 py-3">Topic</th>
-                                            <th scope="col" class="px-6 py-3 w-1/2">Subtopics</th>
-                                            <th scope="col" class="px-6 py-3 text-center">Resources</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white">
+                            <div class="space-y-8">
             `;
 
             // Fix icon class logic for expanded on load
             if(levelPercentage > 0 && levelPercentage < 100) {
                setTimeout(() => {
-                   document.getElementById(iconId).classList.remove('fa-chevron-down');
-                   document.getElementById(iconId).classList.add('fa-chevron-up');
+                   const iconEl = document.getElementById(iconId);
+                   if (iconEl) {
+                       iconEl.classList.remove('fa-chevron-down');
+                       iconEl.classList.add('fa-chevron-up');
+                   }
                }, 10);
             }
 
             level.topics.forEach((topic, topicIndex) => {
-                const topicId = getTopicId(domain.id, level.level, topic.topic);
-                const isChecked = state[topicId] ? 'checked' : '';
-                const rowClass = state[topicId] ? 'completed-row' : 'hover:bg-gray-50';
-                const checkboxId = `cb-${topicId}`;
+                html += `
+                                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                        <h3 class="font-bold text-gray-800">${topic.topic}</h3>
+                                    </div>
+                                    <ul class="divide-y divide-gray-100">
+                `;
+                
+                topic.subtopics.forEach((subtopic, subIndex) => {
+                    const subId = getSubtopicId(domain.id, level.level, topic.topic, subIndex);
+                    const isChecked = state[subId] ? 'checked' : '';
+                    const rowClass = state[subId] ? 'bg-green-50/50' : 'hover:bg-gray-50';
+                    const textClass = state[subId] ? 'text-gray-400 line-through' : 'text-gray-700';
+                    const checkboxId = `cb-${subId}`;
+
+                    html += `
+                                        <li class="flex items-center justify-between px-4 py-3 transition-colors ${rowClass}">
+                                            <div class="flex items-start space-x-3 flex-grow">
+                                                <div class="flex-shrink-0 pt-0.5">
+                                                    <input id="${checkboxId}" type="checkbox" class="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer transition-all" ${isChecked} onchange="toggleSubtopic('${checkboxId}', '${subId}')">
+                                                </div>
+                                                <label for="${checkboxId}" class="font-medium cursor-pointer flex-grow ${textClass} text-sm md:text-base leading-tight pt-0.5">
+                                                    ${subtopic.name}
+                                                </label>
+                                            </div>
+                                            <div class="flex-shrink-0 ml-4">
+                                                <a href="${subtopic.resource.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-md transition-colors border border-blue-200 shadow-sm" title="Study Material">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                    <span class="hidden sm:inline">Learn</span>
+                                                </a>
+                                            </div>
+                                        </li>
+                    `;
+                });
 
                 html += `
-                                        <tr class="border-b border-gray-200 ${rowClass}">
-                                            <td class="px-6 py-4 text-center">
-                                                <input id="${checkboxId}" type="checkbox" class="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer" ${isChecked} onchange="toggleTopic('${checkboxId}', '${topicId}')">
-                                            </td>
-                                            <td class="px-6 py-4 font-medium text-gray-900 whitespace-normal">
-                                                ${topic.topic}
-                                            </td>
-                                            <td class="px-6 py-4 text-gray-600 whitespace-normal">
-                                                ${topic.subtopics}
-                                            </td>
-                                            <td class="px-6 py-4 text-center">
-                                                <a href="#" class="inline-flex items-center justify-center p-2 text-gray-400 hover:text-blue-600 transition-colors" title="Add resource link in future">
-                                                    <i class="fas fa-link"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
+                                    </ul>
+                                </div>
                 `;
             });
 
             html += `
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
                     </div>
