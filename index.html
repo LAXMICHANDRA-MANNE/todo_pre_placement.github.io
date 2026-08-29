@@ -87,6 +87,18 @@
             background-color: #22c55e;
             border-color: #22c55e;
         }
+
+        /* Heatmap cell styling */
+        .heatmap-cell {
+            width: 13px;
+            height: 13px;
+            border-radius: 2px;
+            transition: transform 0.15s ease;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.35);
+            z-index: 10;
+        }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-dark-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen transition-colors duration-300">
@@ -116,34 +128,16 @@
                     </div>
                 </div>
 
-                <!-- HUD Metrics Center -->
-                <div class="hidden md:flex items-center space-x-5 bg-slate-100/80 dark:bg-dark-900/90 py-1.5 px-4 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                    <!-- Streak -->
-                    <div class="flex items-center space-x-2" title="Daily Prep Streak">
-                        <span class="text-orange-500 text-base animate-bounce">🔥</span>
-                        <div class="text-xs">
-                            <span class="text-slate-400 font-medium block leading-none text-[10px]">Streak</span>
-                            <span id="streak-count" class="font-bold text-slate-800 dark:text-slate-200">1 Day</span>
-                        </div>
-                    </div>
-                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
-                    <!-- Completed Stats -->
-                    <div class="flex items-center space-x-2">
-                        <i class="fas fa-check-circle text-emerald-500 text-sm"></i>
-                        <div class="text-xs">
-                            <span class="text-slate-400 font-medium block leading-none text-[10px]">Solved</span>
-                            <span id="hud-completed-count" class="font-bold text-slate-800 dark:text-slate-200">0 / 0</span>
-                        </div>
-                    </div>
-                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
-                    <!-- Bookmarks -->
-                    <div class="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity" onclick="filterByBookmark()" title="View Bookmarked Items">
-                        <i class="fas fa-star text-amber-400 text-sm"></i>
-                        <div class="text-xs">
-                            <span class="text-slate-400 font-medium block leading-none text-[10px]">Saved</span>
-                            <span id="hud-bookmark-count" class="font-bold text-slate-800 dark:text-slate-200">0</span>
-                        </div>
-                    </div>
+                <!-- Primary Mode Switcher (Curriculum vs Analytics Dashboard) -->
+                <div class="flex items-center bg-slate-200/80 dark:bg-dark-900 p-1 rounded-xl border border-slate-300/60 dark:border-slate-800 text-xs font-bold">
+                    <button id="view-tab-curriculum" onclick="switchMainView('curriculum')" class="px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5">
+                        <i class="fas fa-book-open text-emerald-500 dark:text-white"></i>
+                        <span>Syllabus</span>
+                    </button>
+                    <button id="view-tab-analytics" onclick="switchMainView('analytics')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5">
+                        <i class="fas fa-chart-line text-indigo-500"></i>
+                        <span>Analytics & Profiles</span>
+                    </button>
                 </div>
 
                 <!-- Right Actions: Live Cloud Sync & Backup -->
@@ -207,93 +201,511 @@
     <!-- Main Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
 
-        <!-- Banner & Global Progress Card -->
-        <div class="bg-gradient-to-br from-white via-slate-50 to-emerald-50/30 dark:from-dark-900 dark:via-dark-900 dark:to-dark-850 p-6 sm:p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
-            <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- ========================================== -->
+        <!-- VIEW 1: CURRICULUM ROADMAP VIEW            -->
+        <!-- ========================================== -->
+        <div id="view-section-curriculum" class="space-y-6">
             
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-                <div class="space-y-2 max-w-2xl">
-                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-                        <i class="fas fa-shield-halved text-emerald-600 dark:text-emerald-400"></i>
-                        <span>Backend Cloud-Backed SDE Preparation Platform</span>
+            <!-- Banner & Global Progress Card -->
+            <div class="bg-gradient-to-br from-white via-slate-50 to-emerald-50/30 dark:from-dark-900 dark:via-dark-900 dark:to-dark-850 p-6 sm:p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                    <div class="space-y-2 max-w-2xl">
+                        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                            <i class="fas fa-shield-halved text-emerald-600 dark:text-emerald-400"></i>
+                            <span>Tier-1 Tech & FAANG Placement Preparation</span>
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                            Full-Stack SDE Placement Mastery
+                        </h2>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Complete curriculum from basic arrays & trees to distributed systems, kernel internals, and ML infrastructure. Click <strong class="text-emerald-600 dark:text-emerald-400">"Learn & Practice"</strong> on any subtopic for 6+ curated LeetCode/Striver questions, interview cheat sheets, and auto-saving notes.
+                        </p>
                     </div>
-                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                        Full-Stack SDE Placement Mastery
-                    </h2>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Complete curriculum from basic arrays & trees to distributed systems, kernel internals, and ML infrastructure. Connected to real-time <strong>Backend Cloud Storage</strong> so your sessions survive cookie deletion and sync across devices automatically.
-                    </p>
+
+                    <!-- Circular / Linear Overall Meter -->
+                    <div class="bg-white/90 dark:bg-dark-950/80 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 min-w-[280px] shadow-sm flex flex-col justify-center">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mastery Progress</span>
+                            <span id="overall-percentage-badge" class="text-lg font-black text-emerald-600 dark:text-emerald-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-dark-800 rounded-full h-3.5 p-0.5 overflow-hidden border border-slate-200 dark:border-slate-700/60">
+                            <div id="overall-progress-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">
+                            <span id="overall-subtopic-counter">0 of 0 Subtopics Solved</span>
+                            <span id="overall-domains-counter">0/11 Domains Complete</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search, Filter & Quick-Tag Controls -->
+            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white dark:bg-dark-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                
+                <!-- Search Bar -->
+                <div class="relative flex-grow max-w-xl">
+                    <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input 
+                        type="text" 
+                        id="global-search-input" 
+                        placeholder="Search 500+ topics, subtopics, algorithms, or concepts... (Press '/' to focus)" 
+                        class="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 transition-all"
+                        oninput="handleSearch(this.value)"
+                    >
+                    <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
                 </div>
 
-                <!-- Circular / Linear Overall Meter -->
-                <div class="bg-white/90 dark:bg-dark-950/80 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 min-w-[280px] shadow-sm flex flex-col justify-center">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mastery Progress</span>
-                        <span id="overall-percentage-badge" class="text-lg font-black text-emerald-600 dark:text-emerald-400">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-100 dark:bg-dark-800 rounded-full h-3.5 p-0.5 overflow-hidden border border-slate-200 dark:border-slate-700/60">
-                        <div id="overall-progress-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">
-                        <span id="overall-subtopic-counter">0 of 0 Subtopics Solved</span>
-                        <span id="overall-domains-counter">0/11 Domains Complete</span>
-                    </div>
+                <!-- Filter Badges -->
+                <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0 text-xs font-medium scrollbar-none">
+                    <button onclick="setFilter('all')" id="filter-btn-all" class="filter-chip active px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-semibold transition-all">
+                        All
+                    </button>
+                    <button onclick="setFilter('unsolved')" id="filter-btn-unsolved" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                        ⏳ Unsolved
+                    </button>
+                    <button onclick="setFilter('completed')" id="filter-btn-completed" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                        ✅ Completed
+                    </button>
+                    <button onclick="setFilter('bookmarked')" id="filter-btn-bookmarked" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                        ⭐ Bookmarks
+                    </button>
+                    <button onclick="setFilter('revision')" id="filter-btn-revision" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                        🔄 Revision
+                    </button>
+                    <button onclick="setFilter('notes')" id="filter-btn-notes" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                        📝 With Notes
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Sticky Domain Switcher Tabs -->
+            <div class="bg-white dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-1.5 overflow-x-auto">
+                <div id="domains-tabs-container" class="flex whitespace-nowrap space-x-1.5 min-w-max">
+                    <!-- Dynamically Rendered Domain Tabs -->
                 </div>
             </div>
+
+            <!-- Main Curriculum Content Container -->
+            <div id="content-container" class="space-y-4">
+                <!-- Dynamically Rendered Accordions & Subtopics -->
+            </div>
         </div>
 
-        <!-- Search, Filter & Quick-Tag Controls -->
-        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white dark:bg-dark-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <!-- ========================================== -->
+        <!-- VIEW 2: PROFILE & ANALYTICS INTELLIGENCE   -->
+        <!-- ========================================== -->
+        <div id="view-section-analytics" class="space-y-8 hidden">
             
-            <!-- Search Bar -->
-            <div class="relative flex-grow max-w-xl">
-                <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input 
-                    type="text" 
-                    id="global-search-input" 
-                    placeholder="Search 500+ topics, subtopics, algorithms, or concepts... (Press '/' to focus)" 
-                    class="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 transition-all"
-                    oninput="handleSearch(this.value)"
-                >
-                <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1">
-                    <i class="fas fa-times-circle"></i>
-                </button>
+            <!-- Top Summary Cards & Placement Readiness Score -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- FAANG & SDE Readiness Score Card -->
+                <div class="md:col-span-1 p-6 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-indigo-600 text-white shadow-lg relative overflow-hidden flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs uppercase tracking-wider font-bold text-emerald-100">Placement Readiness Index</span>
+                            <i class="fas fa-trophy text-amber-300"></i>
+                        </div>
+                        <div class="flex items-baseline space-x-2">
+                            <span id="readiness-score" class="text-5xl font-black">74</span>
+                            <span class="text-lg font-medium text-emerald-100">/ 100</span>
+                        </div>
+                        <div id="readiness-tier-badge" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md">
+                            🎯 FAANG Ready Track
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-1.5 text-xs text-emerald-50">
+                        <div class="flex justify-between">
+                            <span>DSA Mastery</span>
+                            <span id="score-dsa-pct">80%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Core CS (OS/DBMS/CN)</span>
+                            <span id="score-core-pct">70%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>System Design & Cloud</span>
+                            <span id="score-sys-pct">65%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multi-Platform Solved Stats Total -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
+                            <span>TOTAL AGGREGATE SOLVED</span>
+                            <i class="fas fa-chart-pie text-indigo-500"></i>
+                        </div>
+                        <div class="text-4xl font-black text-slate-900 dark:text-white" id="total-aggregate-solved-count">0</div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Combined across Curriculum, LeetCode, Codeforces, & CodeChef</p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
+                        <div class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40">
+                            <div class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Easy</div>
+                            <div class="text-sm font-extrabold text-slate-800 dark:text-slate-200" id="stat-easy-solved">0</div>
+                        </div>
+                        <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40">
+                            <div class="text-[10px] font-bold text-amber-600 dark:text-amber-400">Medium</div>
+                            <div class="text-sm font-extrabold text-slate-800 dark:text-slate-200" id="stat-med-solved">0</div>
+                        </div>
+                        <div class="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40">
+                            <div class="text-[10px] font-bold text-rose-600 dark:text-rose-400">Hard</div>
+                            <div class="text-sm font-extrabold text-slate-800 dark:text-slate-200" id="stat-hard-solved">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consistency & Velocity Tracker -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
+                            <span>VELOCITY & MOMENTUM</span>
+                            <span class="text-orange-500">🔥 Streak Active</span>
+                        </div>
+                        <div class="text-4xl font-black text-slate-900 dark:text-white" id="analytics-streak-val">1 Day</div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Study velocity: <span class="font-semibold text-emerald-600 dark:text-emerald-400" id="avg-daily-rate">3.5 problems/day</span></p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                        <span class="text-slate-500">Weekly Consistency:</span>
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400" id="weekly-consistency-pct">92% High</span>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- Filter Badges -->
-            <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0 text-xs font-medium scrollbar-none">
-                <button onclick="setFilter('all')" id="filter-btn-all" class="filter-chip active px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-semibold transition-all">
-                    All
-                </button>
-                <button onclick="setFilter('unsolved')" id="filter-btn-unsolved" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
-                    ⏳ Unsolved
-                </button>
-                <button onclick="setFilter('completed')" id="filter-btn-completed" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
-                    ✅ Completed
-                </button>
-                <button onclick="setFilter('bookmarked')" id="filter-btn-bookmarked" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
-                    ⭐ Bookmarks
-                </button>
-                <button onclick="setFilter('revision')" id="filter-btn-revision" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
-                    🔄 Revision
-                </button>
-                <button onclick="setFilter('notes')" id="filter-btn-notes" class="filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
-                    📝 With Notes
-                </button>
+            <!-- Connected Coding & Hacking Profiles Aggregator -->
+            <div class="bg-white dark:bg-dark-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                            <i class="fas fa-network-wired text-indigo-500"></i>
+                            <span>Connected Coding & Hacking Profiles</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Sync live stats from LeetCode, Codeforces, CodeChef, HackerRank, GitHub, and HackTheBox.</p>
+                    </div>
+                    <button onclick="syncAllConnectedProfiles()" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center space-x-2 shadow-sm flex-shrink-0">
+                        <i id="profile-sync-icon" class="fas fa-rotate"></i>
+                        <span>Sync All Profiles Live</span>
+                    </button>
+                </div>
+
+                <!-- Profiles Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    <!-- 1. LeetCode Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-sm">
+                                    <i class="fas fa-code"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">LeetCode</h4>
+                                    <span id="lc-status" class="text-[10px] text-slate-400">Not connected</span>
+                                </div>
+                            </div>
+                            <span id="lc-rank-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Unlinked</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-leetcode" 
+                                placeholder="LeetCode username" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('leetcode', this.value)"
+                            >
+                            <button onclick="fetchLeetCodeProfile()" class="px-2.5 py-2 text-xs font-bold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                                <i class="fas fa-arrow-down-long"></i>
+                            </button>
+                        </div>
+
+                        <div id="lc-stats-box" class="hidden text-xs space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Solved:</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-solved">0</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Ranking:</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-ranking">~</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Acceptance:</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="lc-acceptance">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Codeforces Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm">
+                                    <i class="fas fa-chart-simple"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">Codeforces</h4>
+                                    <span id="cf-status" class="text-[10px] text-slate-400">Not connected</span>
+                                </div>
+                            </div>
+                            <span id="cf-rank-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">Unlinked</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-codeforces" 
+                                placeholder="Codeforces handle" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('codeforces', this.value)"
+                            >
+                            <button onclick="fetchCodeforcesProfile()" class="px-2.5 py-2 text-xs font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                <i class="fas fa-arrow-down-long"></i>
+                            </button>
+                        </div>
+
+                        <div id="cf-stats-box" class="hidden text-xs space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Rating:</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="cf-rating">0</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Max Rating:</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="cf-max-rating">0</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Rank Title:</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200" id="cf-rank-title">Unrated</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. CodeChef Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fas fa-utensils"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">CodeChef</h4>
+                                    <span class="text-[10px] text-slate-400">Competitive Rating</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300">Stars</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-codechef" 
+                                placeholder="CodeChef username" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('codechef', this.value)"
+                            >
+                            <a id="cc-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                                <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 4. HackerRank Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fab fa-hackerrank"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">HackerRank</h4>
+                                    <span class="text-[10px] text-slate-400">Badges & Certificates</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Gold Badges</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-hackerrank" 
+                                placeholder="HackerRank username" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('hackerrank', this.value)"
+                            >
+                            <a id="hr-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                                <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 5. GitHub Developer Profile Card -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fab fa-github"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">GitHub</h4>
+                                    <span id="gh-status" class="text-[10px] text-slate-400">Open Source</span>
+                                </div>
+                            </div>
+                            <span id="gh-repos-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">Repos</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-github" 
+                                placeholder="GitHub username" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('github', this.value)"
+                            >
+                            <button onclick="fetchGitHubProfile()" class="px-2.5 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                <i class="fas fa-arrow-down-long"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 6. Cybersecurity / Hacking Profile Card (TryHackMe & HackTheBox) -->
+                    <div class="p-5 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fas fa-terminal"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">TryHackMe / HTB</h4>
+                                    <span class="text-[10px] text-slate-400">Cybersecurity Lab</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">CTF Rank</span>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="profile-input-tryhackme" 
+                                placeholder="TryHackMe username" 
+                                class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                                onchange="saveProfileHandle('tryhackme', this.value)"
+                            >
+                            <a id="thm-link-btn" href="#" target="_blank" class="px-2.5 py-2 text-xs font-bold bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors">
+                                <i class="fas fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
 
-        </div>
+            <!-- Timeframe Analytics Views (Daily, Weekly, Monthly, Yearly) -->
+            <div class="bg-white dark:bg-dark-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                
+                <!-- Timeframe Selector Tabs -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                            <i class="fas fa-chart-column text-emerald-500"></i>
+                            <span>Time-Horizon Performance Analytics</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Detailed analytical velocity breakdown over daily, weekly, monthly, and yearly intervals.</p>
+                    </div>
 
-        <!-- Sticky Domain Switcher Tabs -->
-        <div class="bg-white dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-1.5 overflow-x-auto">
-            <div id="domains-tabs-container" class="flex whitespace-nowrap space-x-1.5 min-w-max">
-                <!-- Dynamically Rendered Domain Tabs -->
+                    <div class="flex items-center space-x-1 bg-slate-100 dark:bg-dark-950 p-1 rounded-xl text-xs font-bold">
+                        <button onclick="setTimeframeView('daily')" id="tf-btn-daily" class="tf-btn px-3 py-1.5 rounded-lg bg-white dark:bg-dark-800 text-slate-900 dark:text-white shadow-sm transition-all">
+                            📅 Daily
+                        </button>
+                        <button onclick="setTimeframeView('weekly')" id="tf-btn-weekly" class="tf-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all">
+                            📊 Weekly
+                        </button>
+                        <button onclick="setTimeframeView('monthly')" id="tf-btn-monthly" class="tf-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all">
+                            📈 Monthly
+                        </button>
+                        <button onclick="setTimeframeView('yearly')" id="tf-btn-yearly" class="tf-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all">
+                            🏆 Yearly Heatmap
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. Daily Analytics Section -->
+                <div id="analytics-section-daily" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                            <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Today's Solved Progress</h4>
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400" id="daily-solved-count">0 / 5 Topics</span>
+                                <span class="text-xs font-semibold text-slate-400">Target: 5/day</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-dark-800 h-2.5 rounded-full overflow-hidden">
+                                <div id="daily-progress-bar" class="h-full bg-emerald-500 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                            <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Today's Focus Domains</h4>
+                            <div id="daily-domains-breakdown" class="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                                <p>No problems solved yet today. Click "Pick Random" to begin!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Weekly Velocity Section -->
+                <div id="analytics-section-weekly" class="space-y-4 hidden">
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-4">7-Day Weekly Velocity Bar Chart</h4>
+                        <div class="grid grid-cols-7 gap-2 h-40 items-end pt-4" id="weekly-bar-chart">
+                            <!-- Dynamically Rendered Day Bars -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Monthly Trajectory Section -->
+                <div id="analytics-section-monthly" class="space-y-4 hidden">
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-4">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">30-Day Domain Mastery Distribution</h4>
+                        <div id="monthly-domain-bars" class="space-y-3">
+                            <!-- Dynamic domain completion bars -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Yearly 365-Day Activity Heatmap Section -->
+                <div id="analytics-section-yearly" class="space-y-4 hidden">
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3 overflow-x-auto">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">365-Day Practice Activity Heatmap</h4>
+                            <div class="flex items-center space-x-1 text-[10px] text-slate-400">
+                                <span>Less</span>
+                                <div class="w-2.5 h-2.5 rounded bg-slate-200 dark:bg-dark-800"></div>
+                                <div class="w-2.5 h-2.5 rounded bg-emerald-300 dark:bg-emerald-900"></div>
+                                <div class="w-2.5 h-2.5 rounded bg-emerald-500 dark:bg-emerald-600"></div>
+                                <div class="w-2.5 h-2.5 rounded bg-emerald-600 dark:bg-emerald-400"></div>
+                                <span>More</span>
+                            </div>
+                        </div>
+
+                        <!-- Heatmap Grid Container -->
+                        <div id="heatmap-grid" class="flex gap-1 py-2 min-w-max">
+                            <!-- 52 Columns of 7 Day Cells -->
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        </div>
 
-        <!-- Main Curriculum Content Container -->
-        <div id="content-container" class="space-y-4">
-            <!-- Dynamically Rendered Accordions & Subtopics -->
         </div>
 
     </main>
@@ -419,29 +831,6 @@
                         >
                     </div>
 
-                    <!-- Optional GitHub Gist Sync -->
-                    <details class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                        <summary class="font-bold text-slate-900 dark:text-white cursor-pointer select-none">
-                            <i class="fab fa-github mr-1.5"></i> Optional: Connect Personal GitHub Gist Database
-                        </summary>
-                        <div class="pt-3 space-y-2">
-                            <p class="text-slate-500 dark:text-slate-400">
-                                If you prefer storing data in your personal GitHub account, paste a <a href="https://github.com/settings/tokens/new?scopes=gist&description=PlacementMasterySync" target="_blank" class="text-emerald-600 dark:text-emerald-400 underline">Personal Access Token (Gist scope)</a>:
-                            </p>
-                            <div class="flex items-center space-x-2">
-                                <input 
-                                    type="password" 
-                                    id="github-token-input" 
-                                    placeholder="Paste GitHub Token (ghp_...)"
-                                    class="w-full text-xs font-mono p-2.5 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg"
-                                >
-                                <button onclick="saveGitHubTokenAndPush()" class="px-3.5 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors flex-shrink-0">
-                                    Link Gist
-                                </button>
-                            </div>
-                        </div>
-                    </details>
-
                     <!-- Offline JSON Backup -->
                     <div class="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
                         <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Offline File Backup:</span>
@@ -554,7 +943,7 @@
                     <div class="space-y-3">
                         <div class="flex items-center space-x-2 text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             <i class="fas fa-laptop-code text-blue-500"></i>
-                            <span>Curated Practice Problems</span>
+                            <span>Curated Practice Problems (6+ Platforms)</span>
                         </div>
                         <div id="modal-problems-list" class="grid grid-cols-1 gap-2.5">
                             <!-- Dynamic Problem Cards -->

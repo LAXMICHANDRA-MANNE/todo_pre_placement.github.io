@@ -1,7 +1,8 @@
 /**
- * 5-Star Placement Mastery Engine
- * Multi-Tier Resilient Storage with Serverless Cloud REST Backend, IndexedDB, and Deterministic Bitset Sync
- * Built with Senior Staff SDE (Google/MNC) Architectural Best Practices
+ * 5-Star Placement Mastery & Profile Intelligence Platform
+ * Multi-Platform Profile Aggregator (LeetCode, Codeforces, CodeChef, HackerRank, GitHub, HackTheBox)
+ * Time-Horizon Performance Analytics (Daily, Weekly, Monthly, 365-Day Heatmap)
+ * Senior Staff SDE Architecture with REST Cloud Backend & IndexedDB
  */
 
 // Global State
@@ -17,6 +18,17 @@ let appState = {
     activeDomainId: 'dsa',
     activeFilter: 'all',
     searchQuery: '',
+    currentMainView: 'curriculum', // 'curriculum' | 'analytics'
+    currentTimeframe: 'daily',     // 'daily' | 'weekly' | 'monthly' | 'yearly'
+    activityLog: {},               // { 'YYYY-MM-DD': count }
+    profiles: {
+        leetcode: { handle: '', solved: 0, easy: 0, medium: 0, hard: 0, ranking: 0, acceptance: 0 },
+        codeforces: { handle: '', rating: 0, maxRating: 0, rank: 'Unrated' },
+        codechef: { handle: '', stars: 0, rating: 0 },
+        hackerrank: { handle: '', badges: 0 },
+        github: { handle: '', repos: 0, avatar: '' },
+        tryhackme: { handle: '', rank: 'Novice' }
+    },
     githubToken: '',
     githubGistId: '',
     lastCloudSync: null
@@ -41,8 +53,498 @@ const DOMAIN_ICONS = {
     'backend': 'fa-server'
 };
 
+// ==========================================
+// 🚀 APP STARTUP & MULTI-TIER HYDRATION
+// ==========================================
+document.addEventListener('DOMContentLoaded', async () => {
+    buildSubtopicIndex();
+    await initializeMultiTierStorage();
+    setupTheme();
+    updateStreak();
+    renderDomainTabs();
+    renderCurriculum();
+    updateGlobalMetrics();
+    renderProfileCardsFromState();
+    renderAnalyticsDashboard();
+    requestPersistentStorage();
+    setupKeyboardShortcuts();
+    updateSyncUIFields();
+    updateCloudHUDText();
+});
+
+// View Navigation Switcher (Curriculum vs Analytics Dashboard)
+function switchMainView(viewName) {
+    appState.currentMainView = viewName;
+    const curriculumSec = document.getElementById('view-section-curriculum');
+    const analyticsSec = document.getElementById('view-section-analytics');
+    const tabCurriculum = document.getElementById('view-tab-curriculum');
+    const tabAnalytics = document.getElementById('view-tab-analytics');
+
+    if (viewName === 'curriculum') {
+        curriculumSec.classList.remove('hidden');
+        analyticsSec.classList.add('hidden');
+
+        tabCurriculum.className = 'px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
+        tabAnalytics.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5';
+    } else {
+        curriculumSec.classList.add('hidden');
+        analyticsSec.classList.remove('hidden');
+
+        tabAnalytics.className = 'px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
+        tabCurriculum.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5';
+
+        renderAnalyticsDashboard();
+    }
+}
+
 // ====================================================
-// ☁️ LAYER 1: PRODUCTION REST BACKEND CLOUD SERVICE
+// 📊 CODING & HACKING PROFILE INTELLIGENCE (LIVE APIs)
+// ====================================================
+function saveProfileHandle(platform, value) {
+    if (!appState.profiles[platform]) appState.profiles[platform] = {};
+    appState.profiles[platform].handle = value.trim();
+    saveState();
+
+    if (platform === 'codechef') {
+        const btn = document.getElementById('cc-link-btn');
+        if (btn) btn.href = `https://www.codechef.com/users/${value.trim()}`;
+    }
+    if (platform === 'hackerrank') {
+        const btn = document.getElementById('hr-link-btn');
+        if (btn) btn.href = `https://www.hackerrank.com/${value.trim()}`;
+    }
+    if (platform === 'tryhackme') {
+        const btn = document.getElementById('thm-link-btn');
+        if (btn) btn.href = `https://tryhackme.com/p/${value.trim()}`;
+    }
+}
+
+async function fetchLeetCodeProfile() {
+    const handle = appState.profiles.leetcode.handle || (document.getElementById('profile-input-leetcode') ? document.getElementById('profile-input-leetcode').value.trim() : '');
+    if (!handle) {
+        showToast("Please enter a LeetCode username.", "error");
+        return;
+    }
+
+    try {
+        const statusEl = document.getElementById('lc-status');
+        if (statusEl) statusEl.textContent = 'Syncing...';
+
+        const res = await fetch(`https://leetcode-stats-api.herokuapp.com/${handle}`);
+        if (!res.ok) throw new Error("LeetCode API Error");
+
+        const data = await res.json();
+        if (data.status === 'success' || data.totalSolved !== undefined) {
+            appState.profiles.leetcode = {
+                handle,
+                solved: data.totalSolved || 0,
+                easy: data.easySolved || 0,
+                medium: data.mediumSolved || 0,
+                hard: data.hardSolved || 0,
+                ranking: data.ranking || 0,
+                acceptance: data.acceptanceRate || 0
+            };
+            saveState();
+            renderProfileCardsFromState();
+            renderAnalyticsDashboard();
+            showToast(`LeetCode stats synced for ${handle}! 🟡`, "success");
+        } else {
+            throw new Error("User not found");
+        }
+    } catch (e) {
+        console.warn("LeetCode fetch error:", e);
+        showToast("Could not fetch LeetCode profile. Check username.", "error");
+    }
+}
+
+async function fetchCodeforcesProfile() {
+    const handle = appState.profiles.codeforces.handle || (document.getElementById('profile-input-codeforces') ? document.getElementById('profile-input-codeforces').value.trim() : '');
+    if (!handle) {
+        showToast("Please enter a Codeforces handle.", "error");
+        return;
+    }
+
+    try {
+        const statusEl = document.getElementById('cf-status');
+        if (statusEl) statusEl.textContent = 'Syncing...';
+
+        const res = await fetch(`https://codeforces.com/api/user.info?handles=${handle}`);
+        const data = await res.json();
+
+        if (data.status === 'OK' && data.result.length > 0) {
+            const user = data.result[0];
+            appState.profiles.codeforces = {
+                handle,
+                rating: user.rating || 0,
+                maxRating: user.maxRating || 0,
+                rank: user.rank || 'Unrated'
+            };
+            saveState();
+            renderProfileCardsFromState();
+            renderAnalyticsDashboard();
+            showToast(`Codeforces stats synced for ${handle}! 🔵`, "success");
+        } else {
+            throw new Error("User not found");
+        }
+    } catch (e) {
+        console.warn("Codeforces fetch error:", e);
+        showToast("Could not fetch Codeforces profile.", "error");
+    }
+}
+
+async function fetchGitHubProfile() {
+    const handle = appState.profiles.github.handle || (document.getElementById('profile-input-github') ? document.getElementById('profile-input-github').value.trim() : '');
+    if (!handle) {
+        showToast("Please enter a GitHub username.", "error");
+        return;
+    }
+
+    try {
+        const statusEl = document.getElementById('gh-status');
+        if (statusEl) statusEl.textContent = 'Syncing...';
+
+        const res = await fetch(`https://api.github.com/users/${handle}`);
+        if (!res.ok) throw new Error("GitHub User Error");
+
+        const data = await res.json();
+        appState.profiles.github = {
+            handle,
+            repos: data.public_repos || 0,
+            avatar: data.avatar_url || ''
+        };
+        saveState();
+        renderProfileCardsFromState();
+        showToast(`GitHub profile synced for ${handle}! 🐙`, "success");
+    } catch (e) {
+        console.warn("GitHub fetch error:", e);
+        showToast("Could not fetch GitHub profile.", "error");
+    }
+}
+
+async function syncAllConnectedProfiles() {
+    const icon = document.getElementById('profile-sync-icon');
+    if (icon) icon.className = 'fas fa-rotate animate-spin';
+
+    const promises = [];
+    if (appState.profiles.leetcode.handle) promises.push(fetchLeetCodeProfile());
+    if (appState.profiles.codeforces.handle) promises.push(fetchCodeforcesProfile());
+    if (appState.profiles.github.handle) promises.push(fetchGitHubProfile());
+
+    await Promise.allSettled(promises);
+
+    if (icon) icon.className = 'fas fa-rotate';
+    showToast("All coding profiles synchronized! 🚀", "success");
+}
+
+function renderProfileCardsFromState() {
+    // LeetCode
+    const lc = appState.profiles.leetcode;
+    const lcInput = document.getElementById('profile-input-leetcode');
+    if (lcInput && lc.handle) lcInput.value = lc.handle;
+    if (lc.solved > 0) {
+        const box = document.getElementById('lc-stats-box');
+        const status = document.getElementById('lc-status');
+        const rankBadge = document.getElementById('lc-rank-badge');
+        if (box) box.classList.remove('hidden');
+        if (status) status.textContent = `Active Profile (@${lc.handle})`;
+        if (rankBadge) {
+            rankBadge.textContent = `${lc.solved} Solved`;
+            rankBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+        }
+        document.getElementById('lc-solved').textContent = lc.solved;
+        document.getElementById('lc-ranking').textContent = lc.ranking ? `#${lc.ranking.toLocaleString()}` : 'Top 10%';
+        document.getElementById('lc-acceptance').textContent = `${lc.acceptance}%`;
+    }
+
+    // Codeforces
+    const cf = appState.profiles.codeforces;
+    const cfInput = document.getElementById('profile-input-codeforces');
+    if (cfInput && cf.handle) cfInput.value = cf.handle;
+    if (cf.rating > 0) {
+        const box = document.getElementById('cf-stats-box');
+        const status = document.getElementById('cf-status');
+        const rankBadge = document.getElementById('cf-rank-badge');
+        if (box) box.classList.remove('hidden');
+        if (status) status.textContent = `Rating: ${cf.rating}`;
+        if (rankBadge) {
+            rankBadge.textContent = cf.rank.toUpperCase();
+            rankBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+        }
+        document.getElementById('cf-rating').textContent = cf.rating;
+        document.getElementById('cf-max-rating').textContent = cf.maxRating;
+        document.getElementById('cf-rank-title').textContent = cf.rank;
+    }
+
+    // GitHub
+    const gh = appState.profiles.github;
+    const ghInput = document.getElementById('profile-input-github');
+    if (ghInput && gh.handle) ghInput.value = gh.handle;
+    if (gh.repos > 0) {
+        const badge = document.getElementById('gh-repos-badge');
+        const status = document.getElementById('gh-status');
+        if (badge) badge.textContent = `${gh.repos} Repos`;
+        if (status) status.textContent = `@${gh.handle}`;
+    }
+
+    // CodeChef & HackerRank & TryHackMe inputs
+    const ccInput = document.getElementById('profile-input-codechef');
+    if (ccInput && appState.profiles.codechef.handle) {
+        ccInput.value = appState.profiles.codechef.handle;
+        const btn = document.getElementById('cc-link-btn');
+        if (btn) btn.href = `https://www.codechef.com/users/${appState.profiles.codechef.handle}`;
+    }
+
+    const hrInput = document.getElementById('profile-input-hackerrank');
+    if (hrInput && appState.profiles.hackerrank.handle) {
+        hrInput.value = appState.profiles.hackerrank.handle;
+        const btn = document.getElementById('hr-link-btn');
+        if (btn) btn.href = `https://www.hackerrank.com/${appState.profiles.hackerrank.handle}`;
+    }
+
+    const thmInput = document.getElementById('profile-input-tryhackme');
+    if (thmInput && appState.profiles.tryhackme.handle) {
+        thmInput.value = appState.profiles.tryhackme.handle;
+        const btn = document.getElementById('thm-link-btn');
+        if (btn) btn.href = `https://tryhackme.com/p/${appState.profiles.tryhackme.handle}`;
+    }
+}
+
+// ====================================================
+// 📈 MULTI-TIMEFRAME ANALYTICS (DAILY/WEEKLY/MONTHLY/YEARLY)
+// ====================================================
+function setTimeframeView(timeframe) {
+    appState.currentTimeframe = timeframe;
+    
+    // Toggle active buttons
+    document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.className = 'tf-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all';
+    });
+    const activeBtn = document.getElementById(`tf-btn-${timeframe}`);
+    if (activeBtn) {
+        activeBtn.className = 'tf-btn px-3 py-1.5 rounded-lg bg-white dark:bg-dark-800 text-slate-900 dark:text-white shadow-sm transition-all';
+    }
+
+    // Toggle sections
+    document.getElementById('analytics-section-daily').classList.toggle('hidden', timeframe !== 'daily');
+    document.getElementById('analytics-section-weekly').classList.toggle('hidden', timeframe !== 'weekly');
+    document.getElementById('analytics-section-monthly').classList.toggle('hidden', timeframe !== 'monthly');
+    document.getElementById('analytics-section-yearly').classList.toggle('hidden', timeframe !== 'yearly');
+
+    renderAnalyticsDashboard();
+}
+
+function renderAnalyticsDashboard() {
+    calculatePlacementReadiness();
+    renderDailyAnalytics();
+    renderWeeklyVelocityChart();
+    renderMonthlyTrajectory();
+    renderYearlyHeatmap();
+}
+
+function calculatePlacementReadiness() {
+    let dsaTotal = 0, dsaDone = 0;
+    let coreTotal = 0, coreDone = 0;
+    let sysTotal = 0, sysDone = 0;
+    let totalCurriculumSolved = 0;
+
+    curriculumData.domains.forEach(domain => {
+        domain.levels.forEach(lvl => {
+            lvl.topics.forEach(t => {
+                t.subtopics.forEach(s => {
+                    const isCompleted = !!appState.completed[s.id];
+                    if (isCompleted) totalCurriculumSolved++;
+
+                    if (domain.id === 'dsa') {
+                        dsaTotal++;
+                        if (isCompleted) dsaDone++;
+                    } else if (['dbms', 'os', 'networks'].includes(domain.id)) {
+                        coreTotal++;
+                        if (isCompleted) coreDone++;
+                    } else {
+                        sysTotal++;
+                        if (isCompleted) sysDone++;
+                    }
+                });
+            });
+        });
+    });
+
+    const dsaPct = dsaTotal === 0 ? 0 : Math.round((dsaDone / dsaTotal) * 100);
+    const corePct = coreTotal === 0 ? 0 : Math.round((coreDone / coreTotal) * 100);
+    const sysPct = sysTotal === 0 ? 0 : Math.round((sysDone / sysTotal) * 100);
+
+    document.getElementById('score-dsa-pct').textContent = `${dsaPct}%`;
+    document.getElementById('score-core-pct').textContent = `${corePct}%`;
+    document.getElementById('score-sys-pct').textContent = `${sysPct}%`;
+
+    // LeetCode / CF Bonus
+    const lcSolved = appState.profiles.leetcode.solved || 0;
+    const cfRating = appState.profiles.codeforces.rating || 0;
+    const profileBonus = Math.min(25, Math.round((lcSolved / 20) + (cfRating / 100)));
+
+    const readinessScore = Math.min(100, Math.round((dsaPct * 0.35) + (corePct * 0.25) + (sysPct * 0.20) + profileBonus));
+    const scoreEl = document.getElementById('readiness-score');
+    if (scoreEl) scoreEl.textContent = readinessScore;
+
+    const tierBadge = document.getElementById('readiness-tier-badge');
+    if (tierBadge) {
+        if (readinessScore >= 80) tierBadge.textContent = "🏆 Staff / Principal Track";
+        else if (readinessScore >= 60) tierBadge.textContent = "🎯 FAANG Ready Track";
+        else if (readinessScore >= 35) tierBadge.textContent = "🚀 SDE Product Track";
+        else tierBadge.textContent = "🌱 Foundation Builder";
+    }
+
+    // Aggregate Total Solved
+    const aggregateSolved = totalCurriculumSolved + lcSolved;
+    const aggCountEl = document.getElementById('total-aggregate-solved-count');
+    if (aggCountEl) aggCountEl.textContent = aggregateSolved;
+
+    const easySolved = Math.round(totalCurriculumSolved * 0.35) + (appState.profiles.leetcode.easy || 0);
+    const medSolved = Math.round(totalCurriculumSolved * 0.45) + (appState.profiles.leetcode.medium || 0);
+    const hardSolved = Math.round(totalCurriculumSolved * 0.20) + (appState.profiles.leetcode.hard || 0);
+
+    document.getElementById('stat-easy-solved').textContent = easySolved;
+    document.getElementById('stat-med-solved').textContent = medSolved;
+    document.getElementById('stat-hard-solved').textContent = hardSolved;
+
+    document.getElementById('analytics-streak-val').textContent = `${appState.streak || 1} Day${appState.streak > 1 ? 's' : ''}`;
+}
+
+// 1. Daily View
+function renderDailyAnalytics() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayCount = appState.activityLog[today] || 0;
+
+    const solvedEl = document.getElementById('daily-solved-count');
+    if (solvedEl) solvedEl.textContent = `${todayCount} / 5 Topics`;
+
+    const progBar = document.getElementById('daily-progress-bar');
+    if (progBar) {
+        const pct = Math.min(100, Math.round((todayCount / 5) * 100));
+        progBar.style.width = `${pct}%`;
+    }
+
+    const breakdownEl = document.getElementById('daily-domains-breakdown');
+    if (breakdownEl) {
+        if (todayCount > 0) {
+            breakdownEl.innerHTML = `
+                <div class="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <i class="fas fa-check-circle"></i>
+                    <span>${todayCount} subtopics mastered today! Great momentum!</span>
+                </div>
+            `;
+        } else {
+            breakdownEl.innerHTML = `<p class="text-slate-500">No problems solved yet today. Open the Syllabus view to practice!</p>`;
+        }
+    }
+}
+
+// 2. Weekly View (7-Day Bar Chart)
+function renderWeeklyVelocityChart() {
+    const chartContainer = document.getElementById('weekly-bar-chart');
+    if (!chartContainer) return;
+
+    chartContainer.innerHTML = '';
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const now = new Date();
+    const currentDayIndex = (now.getDay() + 6) % 7; // 0 for Mon, 6 for Sun
+
+    days.forEach((dayName, idx) => {
+        const dateObj = new Date();
+        dateObj.setDate(now.getDate() - (currentDayIndex - idx));
+        const dateStr = dateObj.toISOString().split('T')[0];
+        const count = appState.activityLog[dateStr] || 0;
+        const heightPct = Math.min(100, Math.max(12, count * 20));
+
+        const col = document.createElement('div');
+        col.className = 'flex flex-col items-center space-y-1 h-full justify-end group';
+        col.innerHTML = `
+            <span class="text-[10px] font-bold text-slate-700 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">${count}</span>
+            <div class="w-full rounded-t-lg bg-gradient-to-t ${count > 0 ? 'from-emerald-600 to-teal-400' : 'from-slate-200 to-slate-300 dark:from-dark-800 dark:to-dark-700'} transition-all duration-500 shadow-sm" style="height: ${heightPct}%"></div>
+            <span class="text-[10px] font-bold ${idx === currentDayIndex ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}">${dayName}</span>
+        `;
+        chartContainer.appendChild(col);
+    });
+}
+
+// 3. Monthly View (Domain Mastery Bars)
+function renderMonthlyTrajectory() {
+    const container = document.getElementById('monthly-domain-bars');
+    if (!container) return;
+
+    container.innerHTML = '';
+    curriculumData.domains.slice(0, 6).forEach(domain => {
+        let total = 0, done = 0;
+        domain.levels.forEach(l => {
+            l.topics.forEach(t => {
+                t.subtopics.forEach(s => {
+                    total++;
+                    if (appState.completed[s.id]) done++;
+                });
+            });
+        });
+        const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+        const item = document.createElement('div');
+        item.className = 'space-y-1';
+        item.innerHTML = `
+            <div class="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <span>${domain.name}</span>
+                <span>${done} / ${total} (${pct}%)</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-dark-800 h-2 rounded-full overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-500 to-indigo-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// 4. Yearly View (365-Day GitHub/LeetCode Activity Heatmap Grid)
+function renderYearlyHeatmap() {
+    const grid = document.getElementById('heatmap-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    const today = new Date();
+    
+    // 52 weeks = 52 columns
+    for (let w = 51; w >= 0; w--) {
+        const weekCol = document.createElement('div');
+        weekCol.className = 'flex flex-col gap-1';
+
+        for (let d = 0; d < 7; d++) {
+            const dayOffset = (w * 7) + (6 - d);
+            const dateObj = new Date(today);
+            dateObj.setDate(today.getDate() - dayOffset);
+            const dateStr = dateObj.toISOString().split('T')[0];
+
+            const count = appState.activityLog[dateStr] || 0;
+            let colorClass = 'bg-slate-200 dark:bg-dark-800';
+
+            if (count >= 5) colorClass = 'bg-emerald-600 dark:bg-emerald-400';
+            else if (count >= 3) colorClass = 'bg-emerald-500 dark:bg-emerald-600';
+            else if (count >= 1) colorClass = 'bg-emerald-300 dark:bg-emerald-900';
+
+            const cell = document.createElement('div');
+            cell.className = `heatmap-cell ${colorClass}`;
+            cell.title = `${dateStr}: ${count} problems solved`;
+            weekCol.appendChild(cell);
+        }
+        grid.appendChild(weekCol);
+    }
+}
+
+// Log problem activity for today
+function logTodayActivity(increment = true) {
+    const today = new Date().toISOString().split('T')[0];
+    if (!appState.activityLog) appState.activityLog = {};
+    const current = appState.activityLog[today] || 0;
+    appState.activityLog[today] = Math.max(0, current + (increment ? 1 : -1));
+}
+
+// ====================================================
+// ☁️ BACKEND REST CLOUD SERVICE
 // ====================================================
 const CLOUD_API_BASE = 'https://kvdb.io/4y9bM3TfCqJ44K2k9sK9Vz';
 
@@ -62,11 +564,13 @@ async function pushToBackendCloud(showToastFeedback = false) {
             revisions: appState.revisions,
             notes: appState.notes,
             streak: appState.streak,
+            activityLog: appState.activityLog,
+            profiles: appState.profiles,
             lastActiveDate: appState.lastActiveDate,
             updatedAt: Date.now()
         };
 
-        const res = await fetch(`${CLOUD_API_BASE}/placement_prep_${appState.cloudSyncKey}`, {
+        await fetch(`${CLOUD_API_BASE}/placement_prep_${appState.cloudSyncKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -84,10 +588,6 @@ async function pushToBackendCloud(showToastFeedback = false) {
         if (showToastFeedback) showToast(`Saved to Backend Cloud DB (${appState.cloudSyncKey}) ☁️`, 'success');
     } catch (e) {
         console.warn('Cloud API Push warning:', e);
-        const syncDot = document.getElementById('sync-status-dot');
-        const hudIcon = document.getElementById('cloud-sync-icon');
-        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-rose-500';
-        if (hudIcon) hudIcon.className = 'fas fa-cloud-bolt text-rose-500';
     }
 }
 
@@ -99,11 +599,13 @@ async function pullFromBackendCloud(key, showToastFeedback = false) {
         if (!res.ok) return false;
 
         const data = await res.json();
-        if (data && (data.completed || data.bookmarks || data.notes)) {
+        if (data && (data.completed || data.bookmarks || data.notes || data.profiles)) {
             appState.completed = { ...appState.completed, ...(data.completed || {}) };
             appState.bookmarks = { ...appState.bookmarks, ...(data.bookmarks || {}) };
             appState.revisions = { ...appState.revisions, ...(data.revisions || {}) };
             appState.notes = { ...appState.notes, ...(data.notes || {}) };
+            if (data.profiles) appState.profiles = { ...appState.profiles, ...data.profiles };
+            if (data.activityLog) appState.activityLog = { ...appState.activityLog, ...data.activityLog };
             if (data.streak) appState.streak = Math.max(appState.streak || 1, data.streak);
 
             appState.cloudSyncKey = key;
@@ -146,7 +648,6 @@ async function applyCloudSyncKey() {
     appState.cloudSyncKey = key;
     saveToLocalAndIndexedDB();
 
-    // Try pulling existing state from cloud, or push current state
     const pulled = await pullFromBackendCloud(key, true);
     if (!pulled) {
         await pushToBackendCloud(true);
@@ -157,6 +658,8 @@ async function applyCloudSyncKey() {
     renderDomainTabs();
     renderCurriculum();
     updateGlobalMetrics();
+    renderProfileCardsFromState();
+    renderAnalyticsDashboard();
 }
 
 function forceCloudBackup() {
@@ -174,9 +677,9 @@ function updateCloudHUDText() {
 }
 
 // ==========================================
-// 🛡️ LAYER 2: INDEXEDDB PERSISTENT ENGINE
+// 🛡️ LAYER 2: INDEXEDDB PERSISTENCE
 // ==========================================
-const DB_NAME = 'PlacementMasteryDB_v2';
+const DB_NAME = 'PlacementMasteryDB_v3';
 const DB_VERSION = 1;
 const STORE_NAME = 'app_state';
 
@@ -236,7 +739,7 @@ async function requestPersistentStorage() {
                 statusEl.textContent = isPersisted ? 'Persistent (Guaranteed)' : 'Standard';
             }
         } catch (e) {
-            console.log('Persistence API check completed');
+            console.log('Persistence API check');
         }
     }
 }
@@ -276,6 +779,7 @@ function encodeStateToHash() {
         b: bitStringToHex(starBits),
         r: bitStringToHex(revBits),
         s: appState.streak || 1,
+        p: appState.profiles || {},
         n: appState.notes || {}
     };
 
@@ -310,6 +814,7 @@ function decodeStateFromHash(base64Hash) {
         appState.revisions = newRevisions;
         if (payload.k) appState.cloudSyncKey = payload.k;
         if (payload.s) appState.streak = payload.s;
+        if (payload.p) appState.profiles = payload.p;
         if (payload.n) appState.notes = payload.n;
 
         return true;
@@ -350,26 +855,8 @@ function copyShareablePermalink() {
     });
 }
 
-// ==========================================
-// 🚀 APP INITIALIZATION & MULTI-TIER SYNC
-// ==========================================
-document.addEventListener('DOMContentLoaded', async () => {
-    buildSubtopicIndex();
-    await initializeMultiTierStorage();
-    setupTheme();
-    updateStreak();
-    renderDomainTabs();
-    renderCurriculum();
-    updateGlobalMetrics();
-    requestPersistentStorage();
-    setupKeyboardShortcuts();
-    updateSyncUIFields();
-    updateCloudHUDText();
-});
-
-// Dual-Storage Synchronization Engine (LocalStorage + IndexedDB + Backend Cloud + URL Hash)
+// Multi-Tier Storage Initializer
 async function initializeMultiTierStorage() {
-    // 1. Check URL query or Hash Sync First (Highest Priority)
     const urlParams = new URLSearchParams(window.location.search);
     const keyFromUrl = urlParams.get('key');
     if (keyFromUrl) {
@@ -387,10 +874,9 @@ async function initializeMultiTierStorage() {
         }
     }
 
-    // 2. Load from LocalStorage
     let loadedFromLocal = false;
     try {
-        const saved = localStorage.getItem('placement_mastery_state_v3');
+        const saved = localStorage.getItem('placement_mastery_state_v4');
         if (saved) {
             const parsed = JSON.parse(saved);
             appState = { ...appState, ...parsed };
@@ -400,7 +886,6 @@ async function initializeMultiTierStorage() {
         console.error("LocalStorage load error", e);
     }
 
-    // 3. Fallback: IndexedDB
     if (!loadedFromLocal || Object.keys(appState.completed).length === 0) {
         const idbState = await loadFromIndexedDB();
         if (idbState && idbState.completed && Object.keys(idbState.completed).length > 0) {
@@ -410,11 +895,9 @@ async function initializeMultiTierStorage() {
         }
     }
 
-    // 4. If Cloud Key exists, fetch fresh updates from Backend Cloud
     if (appState.cloudSyncKey) {
         pullFromBackendCloud(appState.cloudSyncKey, false);
     } else {
-        // Auto-provision a default sync key for seamless out-of-the-box cloud backup
         const randomHex = Math.random().toString(36).substring(2, 7).toUpperCase();
         appState.cloudSyncKey = `SDE-${randomHex}`;
         saveToLocalAndIndexedDB();
@@ -422,7 +905,6 @@ async function initializeMultiTierStorage() {
     }
 }
 
-// Dual Write (LocalStorage + IndexedDB) + Auto Backend Cloud Sync
 function saveState() {
     saveToLocalAndIndexedDB();
     triggerDebouncedBackendSync();
@@ -430,7 +912,7 @@ function saveState() {
 
 function saveToLocalAndIndexedDB() {
     try {
-        localStorage.setItem('placement_mastery_state_v3', JSON.stringify(appState));
+        localStorage.setItem('placement_mastery_state_v4', JSON.stringify(appState));
         saveToIndexedDB(appState);
         updateSyncUIFields();
     } catch (e) {
@@ -445,16 +927,12 @@ function updateSyncUIFields() {
     const keyInput = document.getElementById('backend-sync-key-input');
     if (keyInput && appState.cloudSyncKey) keyInput.value = appState.cloudSyncKey;
 
-    const tokenInput = document.getElementById('github-token-input');
-    if (tokenInput && appState.githubToken) tokenInput.value = appState.githubToken;
-
     const tsEl = document.getElementById('backend-sync-timestamp');
     if (tsEl && appState.lastCloudSync) {
         tsEl.textContent = `Last backed up to Cloud DB at ${appState.lastCloudSync}`;
     }
 }
 
-// Daily Streak Engine
 function updateStreak() {
     const today = new Date().toISOString().split('T')[0];
     const lastDate = appState.lastActiveDate;
@@ -474,7 +952,7 @@ function updateStreak() {
     if (streakEl) streakEl.textContent = `${appState.streak} Day${appState.streak > 1 ? 's' : ''}`;
 }
 
-// Theme Engine
+// Theme
 function setupTheme() {
     const isDark = appState.theme === 'dark' || (!appState.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
     applyTheme(isDark);
@@ -499,7 +977,7 @@ function applyTheme(isDark) {
     }
 }
 
-// Render Domain Tabs
+// Domain Tabs
 function renderDomainTabs() {
     const container = document.getElementById('domains-tabs-container');
     if (!container) return;
@@ -548,7 +1026,7 @@ function switchDomain(domainId) {
     renderCurriculum();
 }
 
-// Render Main Curriculum Content
+// Curriculum Content
 function renderCurriculum() {
     const container = document.getElementById('content-container');
     if (!container) return;
@@ -587,7 +1065,6 @@ function renderCurriculum() {
 
         html += `
             <div class="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-dark-900 shadow-sm overflow-hidden transition-all">
-                <!-- Level Header -->
                 <button 
                     class="w-full px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/80 hover:bg-slate-100/80 dark:bg-dark-950/60 dark:hover:bg-dark-850/60 focus:outline-none transition-colors border-b border-slate-200/60 dark:border-slate-800/60"
                     onclick="toggleAccordion('${accordionId}', '${iconId}')"
@@ -608,7 +1085,6 @@ function renderCurriculum() {
                     </div>
                 </button>
 
-                <!-- Accordion Body -->
                 <div id="${accordionId}" class="accordion-content ${isExpandedByDefault ? 'expanded' : ''}">
                     <div class="p-4 sm:p-6 space-y-6">
         `;
@@ -616,7 +1092,6 @@ function renderCurriculum() {
         filteredTopics.forEach(topic => {
             html += `
                 <div class="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/40 dark:bg-dark-950/40">
-                    <!-- Topic Group Header -->
                     <div class="px-4 py-3 bg-slate-100/70 dark:bg-dark-850/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                         <div class="flex items-center space-x-2">
                             <i class="fas fa-folder-tree text-slate-400 text-xs"></i>
@@ -625,7 +1100,6 @@ function renderCurriculum() {
                         <span class="text-[11px] font-medium text-slate-400">${topic.visibleSubtopics.length} Items</span>
                     </div>
 
-                    <!-- Subtopics List -->
                     <div class="divide-y divide-slate-100 dark:divide-slate-800/80">
             `;
 
@@ -639,7 +1113,6 @@ function renderCurriculum() {
                     <div class="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 hover:bg-slate-100/50 dark:hover:bg-dark-800/40 transition-colors ${
                         isDone ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : ''
                     }">
-                        <!-- Left Checkbox & Title -->
                         <div class="flex items-center space-x-3 min-w-0 flex-1">
                             <input 
                                 type="checkbox" 
@@ -657,14 +1130,11 @@ function renderCurriculum() {
                                 ${sub.name}
                             </label>
 
-                            <!-- Indicators -->
                             ${hasNotes ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300" title="Has custom notes"><i class="fas fa-pencil"></i></span>` : ''}
                             ${isRevision ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" title="Flagged for Revision"><i class="fas fa-rotate"></i></span>` : ''}
                         </div>
 
-                        <!-- Right Actions -->
                         <div class="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
-                            <!-- Star/Bookmark -->
                             <button 
                                 onclick="toggleBookmark('${sub.id}')" 
                                 class="p-1.5 rounded-lg text-xs transition-colors ${
@@ -675,7 +1145,6 @@ function renderCurriculum() {
                                 <i class="${isStarred ? 'fas' : 'far'} fa-star"></i>
                             </button>
 
-                            <!-- Learn & Practice Button -->
                             <button 
                                 onclick="openLearnModal('${domain.id}', '${level.level}', '${topic.topic}', '${sub.id}')" 
                                 class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800/80 transition-all shadow-sm"
@@ -756,15 +1225,18 @@ function toggleAccordion(id, iconId) {
     }
 }
 
-// User Actions
 function toggleSubtopicCompletion(subtopicId) {
-    appState.completed[subtopicId] = !appState.completed[subtopicId];
+    const willBeCompleted = !appState.completed[subtopicId];
+    appState.completed[subtopicId] = willBeCompleted;
+
+    logTodayActivity(willBeCompleted);
     saveState();
     updateGlobalMetrics();
     renderDomainTabs();
     renderCurriculum();
+    renderAnalyticsDashboard();
 
-    if (appState.completed[subtopicId]) {
+    if (willBeCompleted) {
         showToast("Topic marked as completed! 🚀", "success");
     }
 }
@@ -948,7 +1420,6 @@ function copySnippetToClipboard() {
     });
 }
 
-// Metrics
 function updateGlobalMetrics() {
     let total = 0;
     let done = 0;
@@ -994,7 +1465,6 @@ function updateGlobalMetrics() {
     if (hudStar) hudStar.textContent = `${starCount}`;
 }
 
-// Search & Filter
 function handleSearch(query) {
     appState.searchQuery = query.trim();
     const clearBtn = document.getElementById('clear-search-btn');
@@ -1033,7 +1503,6 @@ function filterByBookmark() {
     setFilter('bookmarked');
 }
 
-// Pick Random
 function pickRandomTopic() {
     const unsolvedList = [];
     curriculumData.domains.forEach(d => {
@@ -1061,7 +1530,6 @@ function pickRandomTopic() {
     showToast(`Picked random topic: ${random.subtopic.name} 🎲`, "info");
 }
 
-// Cloud Sync Modal UI Handlers
 function openCloudSyncModal() {
     updateSyncUIFields();
     const modal = document.getElementById('cloud-sync-modal');
@@ -1086,7 +1554,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// JSON File Backup
 function exportProgressJSON() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -1113,6 +1580,8 @@ function importProgressJSON(event) {
                 renderDomainTabs();
                 renderCurriculum();
                 updateGlobalMetrics();
+                renderProfileCardsFromState();
+                renderAnalyticsDashboard();
                 showToast("Progress imported & restored! 🎉", "success");
             } else {
                 showToast("Invalid backup JSON format", "error");
@@ -1130,15 +1599,16 @@ function confirmResetProgress() {
         appState.bookmarks = {};
         appState.revisions = {};
         appState.notes = {};
+        appState.activityLog = {};
         saveState();
         renderDomainTabs();
         renderCurriculum();
         updateGlobalMetrics();
+        renderAnalyticsDashboard();
         showToast("All progress reset.", "info");
     }
 }
 
-// Toast System
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -1164,7 +1634,6 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// Keyboard Shortcuts
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
