@@ -146,14 +146,14 @@
                     </div>
                 </div>
 
-                <!-- Right Actions & Cloud Sync -->
+                <!-- Right Actions: Live Cloud Sync & Backup -->
                 <div class="flex items-center space-x-2 sm:space-x-3">
                     
-                    <!-- Cloud Sync & Data Resilience Modal Trigger -->
-                    <button onclick="openCloudSyncModal()" class="inline-flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:text-emerald-300 dark:hover:bg-emerald-900/70 border border-emerald-300/80 dark:border-emerald-700/60 transition-all shadow-sm">
-                        <i class="fas fa-cloud-arrow-up text-emerald-500 animate-pulse"></i>
-                        <span class="hidden sm:inline">Cloud Sync</span>
-                        <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <!-- Backend Cloud Sync Trigger -->
+                    <button onclick="openCloudSyncModal()" id="cloud-sync-hud-btn" class="inline-flex items-center space-x-2 px-3 py-2 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:text-emerald-300 dark:hover:bg-emerald-900/70 border border-emerald-300/80 dark:border-emerald-700/60 transition-all shadow-sm">
+                        <i id="cloud-sync-icon" class="fas fa-cloud-bolt text-emerald-500"></i>
+                        <span id="cloud-sync-hud-text" class="hidden sm:inline">Backend Cloud: Active</span>
+                        <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     </button>
 
                     <!-- Random Topic Picker -->
@@ -168,10 +168,10 @@
                             <i class="fas fa-database text-sm"></i>
                         </button>
                         <!-- Backup Dropdown Menu -->
-                        <div id="backup-dropdown" class="hidden absolute right-0 mt-2 w-52 rounded-xl shadow-xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 py-1.5 z-50 text-xs">
+                        <div id="backup-dropdown" class="hidden absolute right-0 mt-2 w-56 rounded-xl shadow-xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 py-1.5 z-50 text-xs">
                             <button onclick="openCloudSyncModal()" class="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-dark-850 flex items-center space-x-2 text-slate-700 dark:text-slate-300">
-                                <i class="fas fa-shield-halved text-emerald-500 w-4"></i>
-                                <span>Multi-Tier Cloud Sync</span>
+                                <i class="fas fa-cloud text-emerald-500 w-4"></i>
+                                <span>Backend Cloud Database</span>
                             </button>
                             <button onclick="copyShareablePermalink()" class="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-dark-850 flex items-center space-x-2 text-slate-700 dark:text-slate-300">
                                 <i class="fas fa-link text-indigo-500 w-4"></i>
@@ -214,14 +214,14 @@
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
                 <div class="space-y-2 max-w-2xl">
                     <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-                        <i class="fas fa-trophy text-amber-500"></i>
-                        <span>Tier-1 Placement & Product Companies Syllabus</span>
+                        <i class="fas fa-shield-halved text-emerald-600 dark:text-emerald-400"></i>
+                        <span>Backend Cloud-Backed SDE Preparation Platform</span>
                     </div>
                     <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Full-Stack SDE Placement Mastery
                     </h2>
                     <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Complete curriculum from basic arrays & trees to distributed systems, kernel internals, and ML infrastructure. Click <strong class="text-emerald-600 dark:text-emerald-400">"Learn & Practice"</strong> on any subtopic for instant interview notes, code templates, and LeetCode problems.
+                        Complete curriculum from basic arrays & trees to distributed systems, kernel internals, and ML infrastructure. Connected to real-time <strong>Backend Cloud Storage</strong> so your sessions survive cookie deletion and sync across devices automatically.
                     </p>
                 </div>
 
@@ -291,14 +291,14 @@
             </div>
         </div>
 
-        <!-- Main Curriculum / Accordion Content Container -->
+        <!-- Main Curriculum Content Container -->
         <div id="content-container" class="space-y-4">
             <!-- Dynamically Rendered Accordions & Subtopics -->
         </div>
 
     </main>
 
-    <!-- Cloud Sync & Data Resilience Modal -->
+    <!-- Backend Cloud Sync & Data Resilience Modal -->
     <div id="cloud-sync-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <!-- Backdrop -->
         <div class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm transition-opacity" onclick="closeCloudSyncModal()"></div>
@@ -310,11 +310,11 @@
                 <div class="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-dark-950/70 flex items-center justify-between">
                     <div class="flex items-center space-x-3">
                         <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center text-lg font-bold">
-                            <i class="fas fa-shield-halved"></i>
+                            <i class="fas fa-cloud-bolt"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Multi-Tier Data Persistence & Cloud Sync</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Never lose your progress — even if browser cookies are deleted!</p>
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Backend Cloud Storage & Multi-Device Sync</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Maintained continuously by cloud backend services.</p>
                         </div>
                     </div>
                     <button onclick="closeCloudSyncModal()" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-dark-800 transition-colors">
@@ -325,24 +325,68 @@
                 <!-- Modal Body -->
                 <div class="p-6 space-y-6 text-sm text-slate-700 dark:text-slate-300">
                     
+                    <!-- Primary Cloud Backend Sync Key -->
+                    <div class="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-indigo-500/10 border border-emerald-500/20 dark:border-emerald-500/30 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 font-extrabold text-slate-900 dark:text-white text-base">
+                                <i class="fas fa-key text-emerald-500"></i>
+                                <span>1. Backend Cloud Sync Key</span>
+                            </div>
+                            <span id="backend-service-badge" class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                Cloud Active
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Your preparation is linked to this unique <strong>Backend Cloud Key</strong>. Every checkmark, bookmark, and note is automatically saved to the backend database in real-time. Use this key on your phone or any new browser to load your exact state instantly!
+                        </p>
+                        
+                        <div class="space-y-2">
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <input 
+                                    type="text" 
+                                    id="backend-sync-key-input" 
+                                    placeholder="Enter or create your sync key (e.g. MANNE-SDE-2026)"
+                                    class="w-full text-xs font-mono p-3 bg-white dark:bg-dark-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                >
+                                <div class="flex items-center space-x-2 flex-shrink-0">
+                                    <button onclick="applyCloudSyncKey()" class="flex-1 sm:flex-initial px-4 py-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors flex items-center justify-center space-x-1.5 shadow-sm">
+                                        <i class="fas fa-rotate"></i>
+                                        <span>Connect</span>
+                                    </button>
+                                    <button onclick="generateNewCloudSyncKey()" class="px-3 py-3 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors" title="Generate New Key">
+                                        <i class="fas fa-wand-magic-sparkles"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between text-xs pt-1 text-slate-500 dark:text-slate-400">
+                                <span id="backend-sync-timestamp">Connected & Synced with Backend Cloud DB</span>
+                                <button onclick="forceCloudBackup()" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center space-x-1 font-semibold">
+                                    <i class="fas fa-cloud-arrow-up"></i>
+                                    <span>Force Save Now</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Storage Health Status Cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="p-3 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800">
                             <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-                                <span>IndexedDB Storage</span>
-                                <i class="fas fa-database text-emerald-500"></i>
+                                <span>Cloud REST Backend</span>
+                                <i class="fas fa-cloud text-emerald-500"></i>
                             </div>
-                            <div class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">Active & Resilient</div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">Survives cookie clears</div>
+                            <div class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">Online (Auto-Sync)</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Survives all cookie clears</div>
                         </div>
 
                         <div class="p-3 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800">
                             <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-                                <span>LocalStorage Cache</span>
-                                <i class="fas fa-bolt text-amber-500"></i>
+                                <span>IndexedDB Storage</span>
+                                <i class="fas fa-database text-teal-500"></i>
                             </div>
-                            <div class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">Mirror Active</div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">High-speed instant load</div>
+                            <div class="font-bold text-emerald-600 dark:text-emerald-400 text-sm">Active & Resilient</div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Isolated from cache purges</div>
                         </div>
 
                         <div class="p-3 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800">
@@ -355,71 +399,52 @@
                         </div>
                     </div>
 
-                    <!-- Method 1: Instant Permanent Sync URL (Deterministic State Snapshot) -->
-                    <div class="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/60 space-y-3">
+                    <!-- Permanent Deterministic URL Link -->
+                    <div class="p-4 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/60 space-y-2">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2 font-bold text-indigo-950 dark:text-indigo-300">
+                            <div class="flex items-center space-x-2 font-bold text-indigo-950 dark:text-indigo-300 text-xs">
                                 <i class="fas fa-link text-indigo-500"></i>
-                                <span>1. Permanent Sync URL (Deterministic Permalink)</span>
+                                <span>2. Permanent Sync URL (Zero-Login Bookmark)</span>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold">100% Offline & Portable</span>
-                        </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Your entire progress is compressed into an immutable URL permalink. Bookmark this link or save it in your notes. Opening it on <strong>ANY browser, phone, or computer</strong> immediately restores your full progress.
-                        </p>
-                        <div class="flex items-center space-x-2">
-                            <input 
-                                type="text" 
-                                id="permanent-sync-url-input" 
-                                readonly 
-                                class="w-full text-xs font-mono p-2.5 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 select-all"
-                            >
-                            <button onclick="copyShareablePermalink()" class="px-3.5 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center space-x-1.5 flex-shrink-0">
+                            <button onclick="copyShareablePermalink()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center space-x-1">
                                 <i class="far fa-copy"></i>
                                 <span>Copy Link</span>
                             </button>
                         </div>
+                        <input 
+                            type="text" 
+                            id="permanent-sync-url-input" 
+                            readonly 
+                            class="w-full text-[11px] font-mono p-2.5 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 select-all"
+                        >
                     </div>
 
-                    <!-- Method 2: GitHub Gist Cloud Database (Zero-Backend Cloud Sync) -->
-                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2 font-bold text-slate-900 dark:text-white">
-                                <i class="fab fa-github text-slate-900 dark:text-white"></i>
-                                <span>2. GitHub Gist Cloud Database (Auto-Sync Across Devices)</span>
-                            </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold">Real-Time Cloud</span>
-                        </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Sync your progress directly to your own private GitHub account via a <a href="https://github.com/settings/tokens/new?scopes=gist&description=PlacementMasterySync" target="_blank" class="text-emerald-600 dark:text-emerald-400 underline font-medium">GitHub Personal Access Token (Gist scope)</a>. Your token is stored only in your local browser.
-                        </p>
-                        
-                        <div class="space-y-2">
+                    <!-- Optional GitHub Gist Sync -->
+                    <details class="p-4 rounded-xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                        <summary class="font-bold text-slate-900 dark:text-white cursor-pointer select-none">
+                            <i class="fab fa-github mr-1.5"></i> Optional: Connect Personal GitHub Gist Database
+                        </summary>
+                        <div class="pt-3 space-y-2">
+                            <p class="text-slate-500 dark:text-slate-400">
+                                If you prefer storing data in your personal GitHub account, paste a <a href="https://github.com/settings/tokens/new?scopes=gist&description=PlacementMasterySync" target="_blank" class="text-emerald-600 dark:text-emerald-400 underline">Personal Access Token (Gist scope)</a>:
+                            </p>
                             <div class="flex items-center space-x-2">
                                 <input 
                                     type="password" 
                                     id="github-token-input" 
-                                    placeholder="Paste GitHub Personal Access Token (ghp_...)"
-                                    class="w-full text-xs font-mono p-2.5 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    placeholder="Paste GitHub Token (ghp_...)"
+                                    class="w-full text-xs font-mono p-2.5 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg"
                                 >
-                                <button onclick="saveGitHubTokenAndPush()" class="px-4 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-700 rounded-lg transition-colors flex items-center space-x-1.5 flex-shrink-0">
-                                    <i class="fas fa-cloud-arrow-up"></i>
-                                    <span>Sync Cloud</span>
+                                <button onclick="saveGitHubTokenAndPush()" class="px-3.5 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors flex-shrink-0">
+                                    Link Gist
                                 </button>
-                            </div>
-                            <div class="flex items-center justify-between text-xs pt-1">
-                                <button onclick="pullFromGitHubGist()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1">
-                                    <i class="fas fa-cloud-arrow-down"></i>
-                                    <span>Pull Latest State from GitHub</span>
-                                </button>
-                                <span id="gist-sync-time" class="text-[11px] text-slate-400">Not synced yet</span>
                             </div>
                         </div>
-                    </div>
+                    </details>
 
-                    <!-- Method 3: JSON File Backup -->
+                    <!-- Offline JSON Backup -->
                     <div class="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Want offline file backups?</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Offline File Backup:</span>
                         <div class="flex items-center space-x-2">
                             <button onclick="exportProgressJSON()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-700 dark:text-slate-300 transition-colors">
                                 <i class="fas fa-download mr-1"></i> Export JSON
@@ -554,7 +579,7 @@
                                 <i class="fas fa-pencil text-pink-500"></i>
                                 <span>My Personal Notes & Interview Tips</span>
                             </div>
-                            <span class="text-[11px] text-slate-400">Auto-saves locally</span>
+                            <span class="text-[11px] text-slate-400">Auto-saves locally & in cloud</span>
                         </div>
                         <textarea 
                             id="modal-user-notes" 

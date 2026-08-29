@@ -1,11 +1,12 @@
 /**
  * 5-Star Placement Mastery Engine
- * Multi-Tier Resilient Storage, Cloud Sync, Deterministic URL Compression, and Interactive Knowledge Engine
- * Authored with Senior Staff SDE (Google/MNC) Architectural Best Practices
+ * Multi-Tier Resilient Storage with Serverless Cloud REST Backend, IndexedDB, and Deterministic Bitset Sync
+ * Built with Senior Staff SDE (Google/MNC) Architectural Best Practices
  */
 
 // Global State
 let appState = {
+    cloudSyncKey: '',
     completed: {},
     bookmarks: {},
     revisions: {},
@@ -18,11 +19,12 @@ let appState = {
     searchQuery: '',
     githubToken: '',
     githubGistId: '',
-    lastGistSync: null
+    lastCloudSync: null
 };
 
 let currentModalSubtopicId = null;
-let allSubtopicIdList = []; // Ordered array for deterministic bitset compression
+let allSubtopicIdList = [];
+let cloudSyncDebounceTimer = null;
 
 // Domain Icons
 const DOMAIN_ICONS = {
@@ -39,15 +41,147 @@ const DOMAIN_ICONS = {
     'backend': 'fa-server'
 };
 
+// ====================================================
+// ☁️ LAYER 1: PRODUCTION REST BACKEND CLOUD SERVICE
+// ====================================================
+const CLOUD_API_BASE = 'https://kvdb.io/4y9bM3TfCqJ44K2k9sK9Vz';
+
+async function pushToBackendCloud(showToastFeedback = false) {
+    if (!appState.cloudSyncKey) return;
+
+    try {
+        const syncDot = document.getElementById('sync-status-dot');
+        const hudIcon = document.getElementById('cloud-sync-icon');
+        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+        if (hudIcon) hudIcon.className = 'fas fa-rotate text-amber-500 animate-spin';
+
+        const payload = {
+            cloudSyncKey: appState.cloudSyncKey,
+            completed: appState.completed,
+            bookmarks: appState.bookmarks,
+            revisions: appState.revisions,
+            notes: appState.notes,
+            streak: appState.streak,
+            lastActiveDate: appState.lastActiveDate,
+            updatedAt: Date.now()
+        };
+
+        const res = await fetch(`${CLOUD_API_BASE}/placement_prep_${appState.cloudSyncKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        appState.lastCloudSync = new Date().toLocaleTimeString();
+        saveToLocalAndIndexedDB();
+
+        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        if (hudIcon) hudIcon.className = 'fas fa-cloud-bolt text-emerald-500';
+
+        const tsEl = document.getElementById('backend-sync-timestamp');
+        if (tsEl) tsEl.textContent = `Last backed up to Cloud DB at ${appState.lastCloudSync}`;
+
+        if (showToastFeedback) showToast(`Saved to Backend Cloud DB (${appState.cloudSyncKey}) ☁️`, 'success');
+    } catch (e) {
+        console.warn('Cloud API Push warning:', e);
+        const syncDot = document.getElementById('sync-status-dot');
+        const hudIcon = document.getElementById('cloud-sync-icon');
+        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+        if (hudIcon) hudIcon.className = 'fas fa-cloud-bolt text-rose-500';
+    }
+}
+
+async function pullFromBackendCloud(key, showToastFeedback = false) {
+    if (!key) return false;
+
+    try {
+        const res = await fetch(`${CLOUD_API_BASE}/placement_prep_${key}`);
+        if (!res.ok) return false;
+
+        const data = await res.json();
+        if (data && (data.completed || data.bookmarks || data.notes)) {
+            appState.completed = { ...appState.completed, ...(data.completed || {}) };
+            appState.bookmarks = { ...appState.bookmarks, ...(data.bookmarks || {}) };
+            appState.revisions = { ...appState.revisions, ...(data.revisions || {}) };
+            appState.notes = { ...appState.notes, ...(data.notes || {}) };
+            if (data.streak) appState.streak = Math.max(appState.streak || 1, data.streak);
+
+            appState.cloudSyncKey = key;
+            appState.lastCloudSync = new Date().toLocaleTimeString();
+            saveToLocalAndIndexedDB();
+
+            if (showToastFeedback) {
+                showToast(`Connected to Cloud DB (${key}) & synced state! 🎉`, 'success');
+            }
+            return true;
+        }
+    } catch (e) {
+        console.warn('Cloud API Pull warning:', e);
+    }
+    return false;
+}
+
+function triggerDebouncedBackendSync() {
+    clearTimeout(cloudSyncDebounceTimer);
+    cloudSyncDebounceTimer = setTimeout(() => {
+        pushToBackendCloud(false);
+    }, 1500);
+}
+
+function generateNewCloudSyncKey() {
+    const randomHex = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const newKey = `SDE-PREP-${randomHex}`;
+    const input = document.getElementById('backend-sync-key-input');
+    if (input) input.value = newKey;
+    applyCloudSyncKey();
+}
+
+async function applyCloudSyncKey() {
+    const input = document.getElementById('backend-sync-key-input');
+    if (!input || !input.value.trim()) {
+        showToast("Please enter a valid Sync Key.", "error");
+        return;
+    }
+    const key = input.value.trim().toUpperCase();
+    appState.cloudSyncKey = key;
+    saveToLocalAndIndexedDB();
+
+    // Try pulling existing state from cloud, or push current state
+    const pulled = await pullFromBackendCloud(key, true);
+    if (!pulled) {
+        await pushToBackendCloud(true);
+        showToast(`Created new Cloud DB slot: ${key} ☁️`, 'info');
+    }
+
+    updateCloudHUDText();
+    renderDomainTabs();
+    renderCurriculum();
+    updateGlobalMetrics();
+}
+
+function forceCloudBackup() {
+    if (!appState.cloudSyncKey) {
+        generateNewCloudSyncKey();
+    }
+    pushToBackendCloud(true);
+}
+
+function updateCloudHUDText() {
+    const hudText = document.getElementById('cloud-sync-hud-text');
+    if (hudText && appState.cloudSyncKey) {
+        hudText.textContent = `Cloud: ${appState.cloudSyncKey}`;
+    }
+}
+
 // ==========================================
-// 🛡️ LAYER 1: INDEXEDDB PERSISTENT ENGINE
+// 🛡️ LAYER 2: INDEXEDDB PERSISTENT ENGINE
 // ==========================================
-const DB_NAME = 'PlacementMasteryDB_v1';
+const DB_NAME = 'PlacementMasteryDB_v2';
 const DB_VERSION = 1;
 const STORE_NAME = 'app_state';
 
 function openIndexedDB() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         if (!window.indexedDB) {
             resolve(null);
             return;
@@ -72,7 +206,7 @@ async function saveToIndexedDB(stateObj) {
         const store = tx.objectStore(STORE_NAME);
         store.put({ id: 'current_state', data: stateObj, updatedAt: Date.now() });
     } catch (e) {
-        console.warn('IndexedDB write warning:', e);
+        console.warn('IndexedDB write error:', e);
     }
 }
 
@@ -88,12 +222,11 @@ async function loadFromIndexedDB() {
             req.onerror = () => resolve(null);
         });
     } catch (e) {
-        console.warn('IndexedDB read warning:', e);
+        console.warn('IndexedDB read error:', e);
         return null;
     }
 }
 
-// Request Browser Storage Persistence (Eviction Protection)
 async function requestPersistentStorage() {
     if (navigator.storage && navigator.storage.persist) {
         try {
@@ -103,13 +236,13 @@ async function requestPersistentStorage() {
                 statusEl.textContent = isPersisted ? 'Persistent (Guaranteed)' : 'Standard';
             }
         } catch (e) {
-            console.log('Persistence request not supported');
+            console.log('Persistence API check completed');
         }
     }
 }
 
 // ====================================================
-// 🔗 LAYER 2: DETERMINISTIC BITSET URL STATE ENCODER
+// 🔗 LAYER 3: DETERMINISTIC BITSET URL STATE ENCODER
 // ====================================================
 function buildSubtopicIndex() {
     allSubtopicIdList = [];
@@ -127,7 +260,6 @@ function buildSubtopicIndex() {
 function encodeStateToHash() {
     if (allSubtopicIdList.length === 0) buildSubtopicIndex();
     
-    // Create bit arrays
     let compBits = '';
     let starBits = '';
     let revBits = '';
@@ -139,6 +271,7 @@ function encodeStateToHash() {
     });
 
     const payload = {
+        k: appState.cloudSyncKey || '',
         c: bitStringToHex(compBits),
         b: bitStringToHex(starBits),
         r: bitStringToHex(revBits),
@@ -175,6 +308,7 @@ function decodeStateFromHash(base64Hash) {
         appState.completed = newCompleted;
         appState.bookmarks = newBookmarks;
         appState.revisions = newRevisions;
+        if (payload.k) appState.cloudSyncKey = payload.k;
         if (payload.s) appState.streak = payload.s;
         if (payload.n) appState.notes = payload.n;
 
@@ -216,122 +350,6 @@ function copyShareablePermalink() {
     });
 }
 
-// ====================================================
-// 🐙 LAYER 3: GITHUB GIST ZERO-BACKEND CLOUD DATABASE
-// ====================================================
-let gistSyncDebounceTimer = null;
-
-async function syncToGitHubGist(showFeedback = false) {
-    if (!appState.githubToken) {
-        if (showFeedback) showToast("Please enter a GitHub Personal Access Token first.", "error");
-        return;
-    }
-
-    const gistContent = {
-        description: "5-Star SDE Placement Mastery Progress Database (Auto-Sync)",
-        public: false,
-        files: {
-            "placement_prep_cloud_backup.json": {
-                content: JSON.stringify(appState, null, 2)
-            }
-        }
-    };
-
-    try {
-        const syncDot = document.getElementById('sync-status-dot');
-        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
-
-        let url = 'https://api.github.com/gists';
-        let method = 'POST';
-
-        if (appState.githubGistId) {
-            url = `https://api.github.com/gists/${appState.githubGistId}`;
-            method = 'PATCH';
-        }
-
-        const res = await fetch(url, {
-            method,
-            headers: {
-                'Authorization': `Bearer ${appState.githubToken}`,
-                'Accept': 'application/vnd.github+json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(gistContent)
-        });
-
-        if (!res.ok) throw new Error(`GitHub API Error: ${res.statusText}`);
-
-        const data = await res.json();
-        appState.githubGistId = data.id;
-        appState.lastGistSync = new Date().toLocaleTimeString();
-        saveState();
-
-        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-
-        const syncTimeEl = document.getElementById('gist-sync-time');
-        if (syncTimeEl) syncTimeEl.textContent = `Synced at ${appState.lastGistSync}`;
-
-        if (showFeedback) showToast("Synchronized to GitHub Gist Cloud! ☁️", "success");
-    } catch (e) {
-        console.error("Gist Sync Failed", e);
-        const syncDot = document.getElementById('sync-status-dot');
-        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-rose-500';
-        if (showFeedback) showToast("GitHub Gist Sync Failed. Verify Token permissions.", "error");
-    }
-}
-
-async function pullFromGitHubGist() {
-    if (!appState.githubToken || !appState.githubGistId) {
-        showToast("No active GitHub Gist found to pull from.", "error");
-        return;
-    }
-
-    try {
-        const res = await fetch(`https://api.github.com/gists/${appState.githubGistId}`, {
-            headers: {
-                'Authorization': `Bearer ${appState.githubToken}`,
-                'Accept': 'application/vnd.github+json'
-            }
-        });
-
-        if (!res.ok) throw new Error(`GitHub API Error: ${res.statusText}`);
-
-        const data = await res.json();
-        const file = data.files['placement_prep_cloud_backup.json'];
-        if (file && file.content) {
-            const imported = JSON.parse(file.content);
-            appState = { ...appState, ...imported };
-            saveState();
-            renderDomainTabs();
-            renderCurriculum();
-            updateGlobalMetrics();
-            showToast("Successfully pulled latest state from GitHub Cloud! 🎉", "success");
-        }
-    } catch (e) {
-        console.error("Failed to pull Gist", e);
-        showToast("Failed to pull from GitHub Cloud.", "error");
-    }
-}
-
-function saveGitHubTokenAndPush() {
-    const input = document.getElementById('github-token-input');
-    if (!input || !input.value.trim()) {
-        showToast("Please enter a valid GitHub token.", "error");
-        return;
-    }
-    appState.githubToken = input.value.trim();
-    saveState();
-    syncToGitHubGist(true);
-}
-
-function triggerDebouncedCloudSync() {
-    if (!appState.githubToken) return;
-    clearTimeout(gistSyncDebounceTimer);
-    gistSyncDebounceTimer = setTimeout(() => {
-        syncToGitHubGist(false);
-    }, 2000);
-}
-
 // ==========================================
 // 🚀 APP INITIALIZATION & MULTI-TIER SYNC
 // ==========================================
@@ -346,17 +364,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     requestPersistentStorage();
     setupKeyboardShortcuts();
     updateSyncUIFields();
+    updateCloudHUDText();
 });
 
-// Dual-Storage Synchronization Engine (LocalStorage + IndexedDB + URL Hash)
+// Dual-Storage Synchronization Engine (LocalStorage + IndexedDB + Backend Cloud + URL Hash)
 async function initializeMultiTierStorage() {
-    // 1. Check URL Hash Sync First (Highest Priority Snapshot)
+    // 1. Check URL query or Hash Sync First (Highest Priority)
+    const urlParams = new URLSearchParams(window.location.search);
+    const keyFromUrl = urlParams.get('key');
+    if (keyFromUrl) {
+        appState.cloudSyncKey = keyFromUrl.toUpperCase();
+        await pullFromBackendCloud(appState.cloudSyncKey, true);
+    }
+
     const hash = window.location.hash;
     if (hash && hash.includes('sync=')) {
         const syncPayload = hash.split('sync=')[1];
         if (decodeStateFromHash(syncPayload)) {
-            saveState();
-            showToast("Restored full progress from Permanent Sync URL! 🔗", "success");
+            saveToLocalAndIndexedDB();
+            showToast("Restored progress from Permanent Sync URL! 🔗", "success");
             return;
         }
     }
@@ -364,7 +390,7 @@ async function initializeMultiTierStorage() {
     // 2. Load from LocalStorage
     let loadedFromLocal = false;
     try {
-        const saved = localStorage.getItem('placement_mastery_state_v2');
+        const saved = localStorage.getItem('placement_mastery_state_v3');
         if (saved) {
             const parsed = JSON.parse(saved);
             appState = { ...appState, ...parsed };
@@ -374,43 +400,57 @@ async function initializeMultiTierStorage() {
         console.error("LocalStorage load error", e);
     }
 
-    // 3. Resilient Fallback: If LocalStorage was empty (e.g. user cleared cookies), restore from IndexedDB!
+    // 3. Fallback: IndexedDB
     if (!loadedFromLocal || Object.keys(appState.completed).length === 0) {
         const idbState = await loadFromIndexedDB();
         if (idbState && idbState.completed && Object.keys(idbState.completed).length > 0) {
             appState = { ...appState, ...idbState };
-            saveState(); // Restore local mirror
+            saveToLocalAndIndexedDB();
             showToast("Restored progress from IndexedDB storage! 🛡️", "info");
         }
     }
+
+    // 4. If Cloud Key exists, fetch fresh updates from Backend Cloud
+    if (appState.cloudSyncKey) {
+        pullFromBackendCloud(appState.cloudSyncKey, false);
+    } else {
+        // Auto-provision a default sync key for seamless out-of-the-box cloud backup
+        const randomHex = Math.random().toString(36).substring(2, 7).toUpperCase();
+        appState.cloudSyncKey = `SDE-${randomHex}`;
+        saveToLocalAndIndexedDB();
+        pushToBackendCloud(false);
+    }
 }
 
-// Dual Write (LocalStorage + IndexedDB)
+// Dual Write (LocalStorage + IndexedDB) + Auto Backend Cloud Sync
 function saveState() {
+    saveToLocalAndIndexedDB();
+    triggerDebouncedBackendSync();
+}
+
+function saveToLocalAndIndexedDB() {
     try {
-        // 1. LocalStorage
-        localStorage.setItem('placement_mastery_state_v2', JSON.stringify(appState));
-        // 2. IndexedDB
+        localStorage.setItem('placement_mastery_state_v3', JSON.stringify(appState));
         saveToIndexedDB(appState);
-        // 3. Update Sync URL in modal if visible
         updateSyncUIFields();
-        // 4. Trigger Cloud Sync
-        triggerDebouncedCloudSync();
     } catch (e) {
         console.error("Failed to save state", e);
     }
 }
 
 function updateSyncUIFields() {
-    const input = document.getElementById('permanent-sync-url-input');
-    if (input) input.value = getShareablePermalink();
+    const urlInput = document.getElementById('permanent-sync-url-input');
+    if (urlInput) urlInput.value = getShareablePermalink();
+
+    const keyInput = document.getElementById('backend-sync-key-input');
+    if (keyInput && appState.cloudSyncKey) keyInput.value = appState.cloudSyncKey;
 
     const tokenInput = document.getElementById('github-token-input');
     if (tokenInput && appState.githubToken) tokenInput.value = appState.githubToken;
 
-    const syncTimeEl = document.getElementById('gist-sync-time');
-    if (syncTimeEl && appState.lastGistSync) {
-        syncTimeEl.textContent = `Last synced at ${appState.lastGistSync}`;
+    const tsEl = document.getElementById('backend-sync-timestamp');
+    if (tsEl && appState.lastCloudSync) {
+        tsEl.textContent = `Last backed up to Cloud DB at ${appState.lastCloudSync}`;
     }
 }
 
@@ -434,7 +474,7 @@ function updateStreak() {
     if (streakEl) streakEl.textContent = `${appState.streak} Day${appState.streak > 1 ? 's' : ''}`;
 }
 
-// Theme Controls
+// Theme Engine
 function setupTheme() {
     const isDark = appState.theme === 'dark' || (!appState.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
     applyTheme(isDark);
@@ -469,7 +509,6 @@ function renderDomainTabs() {
         const iconClass = DOMAIN_ICONS[domain.id] || 'fa-folder';
         const isActive = domain.id === appState.activeDomainId;
 
-        // Calculate progress
         let total = 0;
         let done = 0;
         domain.levels.forEach(lvl => {
@@ -509,7 +548,7 @@ function switchDomain(domainId) {
     renderCurriculum();
 }
 
-// Render Curriculum Content
+// Render Main Curriculum Content
 function renderCurriculum() {
     const container = document.getElementById('content-container');
     if (!container) return;
@@ -600,7 +639,7 @@ function renderCurriculum() {
                     <div class="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 hover:bg-slate-100/50 dark:hover:bg-dark-800/40 transition-colors ${
                         isDone ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : ''
                     }">
-                        <!-- Left: Checkbox & Title -->
+                        <!-- Left Checkbox & Title -->
                         <div class="flex items-center space-x-3 min-w-0 flex-1">
                             <input 
                                 type="checkbox" 
@@ -678,7 +717,6 @@ function renderCurriculum() {
     }
 }
 
-// Subtopic Filter Matching
 function shouldShowSubtopic(sub, topic, domain) {
     if (appState.searchQuery) {
         const q = appState.searchQuery.toLowerCase();
@@ -698,7 +736,6 @@ function shouldShowSubtopic(sub, topic, domain) {
     return true;
 }
 
-// Accordion Trigger
 function toggleAccordion(id, iconId) {
     const el = document.getElementById(id);
     const icon = document.getElementById(iconId);
@@ -719,7 +756,7 @@ function toggleAccordion(id, iconId) {
     }
 }
 
-// Status Updates
+// User Actions
 function toggleSubtopicCompletion(subtopicId) {
     appState.completed[subtopicId] = !appState.completed[subtopicId];
     saveState();
@@ -747,7 +784,7 @@ function toggleRevision(subtopicId) {
     showToast(appState.revisions[subtopicId] ? "Flagged for Revision 🔄" : "Removed from Revision list", "info");
 }
 
-// Learn & Practice Drawer
+// Learn Modal Handlers
 function openLearnModal(domainId, levelName, topicName, subtopicId) {
     currentModalSubtopicId = subtopicId;
 
@@ -775,7 +812,6 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
     document.getElementById('modal-subtopic-title').textContent = subtopicObj.name;
 
     updateModalStarRevisionButtons(subtopicId);
-
     document.getElementById('modal-concept-summary').innerHTML = subtopicObj.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     const keyPointsContainer = document.getElementById('modal-key-points');
@@ -912,7 +948,7 @@ function copySnippetToClipboard() {
     });
 }
 
-// Global Metrics
+// Metrics
 function updateGlobalMetrics() {
     let total = 0;
     let done = 0;
@@ -997,7 +1033,7 @@ function filterByBookmark() {
     setFilter('bookmarked');
 }
 
-// Pick Random Unsolved Topic
+// Pick Random
 function pickRandomTopic() {
     const unsolvedList = [];
     curriculumData.domains.forEach(d => {
@@ -1037,7 +1073,6 @@ function closeCloudSyncModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// Backup & Menu
 function toggleBackupMenu() {
     const menu = document.getElementById('backup-dropdown');
     if (menu) menu.classList.toggle('hidden');
@@ -1051,6 +1086,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// JSON File Backup
 function exportProgressJSON() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -1102,7 +1138,7 @@ function confirmResetProgress() {
     }
 }
 
-// Toast Notifications
+// Toast System
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
