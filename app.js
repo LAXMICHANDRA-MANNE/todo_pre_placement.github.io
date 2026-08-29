@@ -679,38 +679,161 @@ function renderMonthlyTrajectory() {
     });
 }
 
-// 4. Yearly View (365-Day Activity Heatmap Grid)
+// 4. Yearly View (Month-by-Month 12 Boxes Activity Heatmap Grid)
 function renderYearlyHeatmap() {
-    const grid = document.getElementById('heatmap-grid');
-    if (!grid) return;
+    const container = document.getElementById('heatmap-months-container');
+    if (!container) return;
 
-    grid.innerHTML = '';
-    const today = new Date();
-    
-    for (let w = 51; w >= 0; w--) {
-        const weekCol = document.createElement('div');
-        weekCol.className = 'flex flex-col gap-1';
+    container.innerHTML = '';
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const now = new Date();
 
-        for (let d = 0; d < 7; d++) {
-            const dayOffset = (w * 7) + (6 - d);
-            const dateObj = new Date(today);
-            dateObj.setDate(today.getDate() - dayOffset);
-            const dateStr = dateObj.toISOString().split('T')[0];
+    // Render 12 Rolling Months (from 11 months ago to current month)
+    for (let i = 11; i >= 0; i--) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth();
+        const monthName = monthNames[month];
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayOfWeek = (new Date(year, month, 1).getDay() + 6) % 7; // 0 for Mon, 6 for Sun
 
+        let monthTotalSolved = 0;
+        let monthActiveDays = 0;
+
+        // Calculate month statistics
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const count = appState.activityLog[dateStr] || 0;
-            let colorClass = 'bg-slate-200 dark:bg-dark-800';
+            if (count > 0) {
+                monthTotalSolved += count;
+                monthActiveDays++;
+            }
+        }
 
-            if (count >= 5) colorClass = 'bg-emerald-600 dark:bg-emerald-400';
+        // Create Month Box Card
+        const monthCard = document.createElement('div');
+        monthCard.className = 'p-4 rounded-xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3 transition-all hover:border-emerald-500/40';
+
+        // Month Card Header
+        let monthHeaderHTML = `
+            <div class="flex items-center justify-between">
+                <div>
+                    <h5 class="text-xs font-bold text-slate-900 dark:text-white">${monthName} <span class="text-[10px] text-slate-400 font-normal">${year}</span></h5>
+                    <span class="text-[10px] text-slate-400">${monthActiveDays} active day${monthActiveDays === 1 ? '' : 's'}</span>
+                </div>
+                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${monthTotalSolved > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-dark-800 dark:text-slate-400'}">
+                    ${monthTotalSolved} Solved
+                </span>
+            </div>
+        `;
+
+        // Day of Week Header Row
+        let dayHeadersHTML = `<div class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800/80">`;
+        dayLabels.forEach(label => {
+            dayHeadersHTML += `<span>${label}</span>`;
+        });
+        dayHeadersHTML += `</div>`;
+
+        // Days Grid (7 columns)
+        let daysGridHTML = `<div class="grid grid-cols-7 gap-1 pt-1">`;
+        
+        // Empty placeholder cells before 1st of the month
+        for (let p = 0; p < firstDayOfWeek; p++) {
+            daysGridHTML += `<div class="w-full aspect-square rounded opacity-0 pointer-events-none"></div>`;
+        }
+
+        // Actual Day Cells
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const count = appState.activityLog[dateStr] || 0;
+
+            let colorClass = 'bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700';
+            if (count >= 5) colorClass = 'bg-emerald-600 dark:bg-emerald-400 shadow-sm shadow-emerald-500/30';
             else if (count >= 3) colorClass = 'bg-emerald-500 dark:bg-emerald-600';
             else if (count >= 1) colorClass = 'bg-emerald-300 dark:bg-emerald-900';
 
-            const cell = document.createElement('div');
-            cell.className = `heatmap-cell ${colorClass}`;
-            cell.title = `${dateStr}: ${count} problems solved`;
-            weekCol.appendChild(cell);
+            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            const ringClass = isToday ? 'ring-1.5 ring-emerald-500 ring-offset-1 ring-offset-white dark:ring-offset-dark-900' : '';
+
+            daysGridHTML += `
+                <div 
+                    class="w-full aspect-square rounded-md ${colorClass} ${ringClass} transition-all transform hover:scale-125 cursor-pointer relative group"
+                    data-date="${dateStr}"
+                    data-count="${count}"
+                    onmouseenter="showHeatmapTooltip(event, '${dateStr}', ${count})"
+                    onmousemove="moveHeatmapTooltip(event)"
+                    onmouseleave="hideHeatmapTooltip()"
+                ></div>
+            `;
         }
-        grid.appendChild(weekCol);
+
+        daysGridHTML += `</div>`;
+
+        monthCard.innerHTML = monthHeaderHTML + dayHeadersHTML + daysGridHTML;
+        container.appendChild(monthCard);
     }
+}
+
+// Floating Tooltip Handlers (Instant On-Hover & Hidden On-Leave)
+function showHeatmapTooltip(event, dateStr, count) {
+    const tooltip = document.getElementById('heatmap-floating-tooltip');
+    if (!tooltip) return;
+
+    const dateObj = new Date(dateStr + 'T00:00:00');
+    const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+    const formattedDate = dateObj.toLocaleDateString('en-US', options);
+
+    const dateEl = document.getElementById('tooltip-date');
+    const eventsEl = document.getElementById('tooltip-events');
+    const tagEl = document.getElementById('tooltip-tag');
+
+    if (dateEl) dateEl.textContent = formattedDate;
+
+    if (eventsEl) {
+        if (count > 0) {
+            eventsEl.innerHTML = `<span class="font-black text-emerald-400">${count}</span> Problem${count > 1 ? 's' : ''} Solved & Mastered`;
+        } else {
+            eventsEl.textContent = 'No practice events recorded';
+        }
+    }
+
+    if (tagEl) {
+        if (count >= 5) {
+            tagEl.textContent = '🔥 Target Met (5+)';
+            tagEl.className = 'px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-500/20 text-emerald-300';
+        } else if (count >= 3) {
+            tagEl.textContent = '⚡ Active (3-4)';
+            tagEl.className = 'px-1.5 py-0.5 text-[9px] font-bold rounded bg-teal-500/20 text-teal-300';
+        } else if (count >= 1) {
+            tagEl.textContent = '🌱 Light (1-2)';
+            tagEl.className = 'px-1.5 py-0.5 text-[9px] font-bold rounded bg-blue-500/20 text-blue-300';
+        } else {
+            tagEl.textContent = '💤 Rest Day';
+            tagEl.className = 'px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-700/50 text-slate-400';
+        }
+    }
+
+    moveHeatmapTooltip(event);
+    tooltip.style.opacity = '1';
+    tooltip.style.pointerEvents = 'none';
+}
+
+function moveHeatmapTooltip(event) {
+    const tooltip = document.getElementById('heatmap-floating-tooltip');
+    if (!tooltip) return;
+
+    const x = event.clientX;
+    const y = event.clientY - 14;
+
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+}
+
+function hideHeatmapTooltip() {
+    const tooltip = document.getElementById('heatmap-floating-tooltip');
+    if (!tooltip) return;
+    tooltip.style.opacity = '0';
 }
 
 function logTodayActivity(increment = true) {
