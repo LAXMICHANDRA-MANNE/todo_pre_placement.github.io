@@ -22,11 +22,11 @@ let appState = {
     currentTimeframe: 'daily',     // 'daily' | 'weekly' | 'monthly' | 'yearly'
     activityLog: {},               // { 'YYYY-MM-DD': count }
     profiles: {
-        leetcode: { handle: '', name: '', avatar: '', solved: 0, easy: 0, medium: 0, hard: 0, ranking: 0, acceptance: 0 },
+        leetcode: { handle: 'chandanmanne_06', name: '', avatar: '', solved: 0, easy: 0, medium: 0, hard: 0, ranking: 0, acceptance: 0 },
         codeforces: { handle: '', name: '', avatar: '', rating: 0, maxRating: 0, rank: 'Unrated' },
         codechef: { handle: '', stars: 0, rating: 0 },
         hackerrank: { handle: '', badges: 0 },
-        github: { handle: '', name: '', avatar: '', repos: 0 },
+        github: { handle: 'LAXMICHANDRA-MANNE', name: '', avatar: '', repos: 0 },
         tryhackme: { handle: '', rank: 'Novice' }
     },
     githubToken: '',
@@ -57,15 +57,12 @@ const DOMAIN_ICONS = {
 function cleanHandle(input) {
     if (!input) return '';
     let clean = input.trim();
-    // Remove trailing slash
     clean = clean.replace(/\/+$/, '');
     
-    // If full URL, take last meaningful segment
     if (clean.includes('/')) {
         const parts = clean.split('/').filter(p => p && p !== 'u' && p !== 'profile' && p !== 'users' && p !== 'p');
         clean = parts[parts.length - 1];
     }
-    // Remove URL query params or hashes
     clean = clean.split('?')[0].split('#')[0];
     return clean.trim();
 }
@@ -87,6 +84,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupKeyboardShortcuts();
     updateSyncUIFields();
     updateCloudHUDText();
+
+    // Auto-sync active profiles on startup (LeetCode & GitHub)
+    if (appState.profiles.leetcode.handle || appState.profiles.github.handle) {
+        setTimeout(() => {
+            syncAllConnectedProfiles(true);
+        }, 300);
+    }
 });
 
 // View Navigation Switcher
@@ -110,6 +114,7 @@ function switchMainView(viewName) {
         tabAnalytics.className = 'px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
         tabCurriculum.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5';
 
+        renderProfileCardsFromState();
         renderAnalyticsDashboard();
     }
 }
@@ -138,13 +143,13 @@ function saveProfileHandle(platform, rawValue) {
 }
 
 // 🟡 LeetCode Live Sync (Multi-Provider Resilient Fetch)
-async function fetchLeetCodeProfile() {
+async function fetchLeetCodeProfile(silent = false) {
     let inputEl = document.getElementById('profile-input-leetcode');
-    let rawHandle = inputEl ? inputEl.value : (appState.profiles.leetcode.handle || '');
+    let rawHandle = inputEl && inputEl.value ? inputEl.value : (appState.profiles.leetcode.handle || 'chandanmanne_06');
     let handle = cleanHandle(rawHandle);
 
     if (!handle) {
-        showToast("Please enter a LeetCode username or profile URL.", "error");
+        if (!silent) showToast("Please enter a LeetCode username or profile URL.", "error");
         return;
     }
 
@@ -216,21 +221,21 @@ async function fetchLeetCodeProfile() {
         saveState();
         renderProfileCardsFromState();
         renderAnalyticsDashboard();
-        showToast(`LeetCode stats synced: ${appState.profiles.leetcode.solved} Problems Solved! 🟡`, "success");
+        if (!silent) showToast(`LeetCode synced: ${appState.profiles.leetcode.solved} Problems Solved! 🟡`, "success");
     } else {
         if (statusEl) statusEl.textContent = 'Sync failed';
-        showToast("Could not fetch LeetCode profile. Check username.", "error");
+        if (!silent) showToast("Could not fetch LeetCode profile. Check username.", "error");
     }
 }
 
 // 🔵 Codeforces Live Sync
-async function fetchCodeforcesProfile() {
+async function fetchCodeforcesProfile(silent = false) {
     let inputEl = document.getElementById('profile-input-codeforces');
-    let rawHandle = inputEl ? inputEl.value : (appState.profiles.codeforces.handle || '');
+    let rawHandle = inputEl && inputEl.value ? inputEl.value : (appState.profiles.codeforces.handle || '');
     let handle = cleanHandle(rawHandle);
 
     if (!handle) {
-        showToast("Please enter a Codeforces handle.", "error");
+        if (!silent) showToast("Please enter a Codeforces handle.", "error");
         return;
     }
 
@@ -257,25 +262,25 @@ async function fetchCodeforcesProfile() {
             saveState();
             renderProfileCardsFromState();
             renderAnalyticsDashboard();
-            showToast(`Codeforces stats synced: ${user.rating || 'Unrated'} (${user.rank || ''})! 🔵`, "success");
+            if (!silent) showToast(`Codeforces synced: ${user.rating || 'Unrated'} (${user.rank || ''})! 🔵`, "success");
         } else {
             throw new Error("User not found");
         }
     } catch (e) {
         console.warn("Codeforces fetch error:", e);
         if (statusEl) statusEl.textContent = 'Sync failed';
-        showToast("Could not fetch Codeforces profile.", "error");
+        if (!silent) showToast("Could not fetch Codeforces profile.", "error");
     }
 }
 
 // 🐙 GitHub Live Sync
-async function fetchGitHubProfile() {
+async function fetchGitHubProfile(silent = false) {
     let inputEl = document.getElementById('profile-input-github');
-    let rawHandle = inputEl ? inputEl.value : (appState.profiles.github.handle || '');
+    let rawHandle = inputEl && inputEl.value ? inputEl.value : (appState.profiles.github.handle || 'LAXMICHANDRA-MANNE');
     let handle = cleanHandle(rawHandle);
 
     if (!handle) {
-        showToast("Please enter a GitHub username.", "error");
+        if (!silent) showToast("Please enter a GitHub username.", "error");
         return;
     }
 
@@ -298,27 +303,27 @@ async function fetchGitHubProfile() {
         };
         saveState();
         renderProfileCardsFromState();
-        showToast(`GitHub profile synced: ${data.public_repos} Repos! 🐙`, "success");
+        if (!silent) showToast(`GitHub synced: ${data.public_repos} Repos! 🐙`, "success");
     } catch (e) {
         console.warn("GitHub fetch error:", e);
         if (statusEl) statusEl.textContent = 'Sync failed';
-        showToast("Could not fetch GitHub profile.", "error");
+        if (!silent) showToast("Could not fetch GitHub profile.", "error");
     }
 }
 
-async function syncAllConnectedProfiles() {
+async function syncAllConnectedProfiles(silent = false) {
     const icon = document.getElementById('profile-sync-icon');
     if (icon) icon.className = 'fas fa-rotate animate-spin';
 
     const promises = [];
-    if (appState.profiles.leetcode.handle) promises.push(fetchLeetCodeProfile());
-    if (appState.profiles.codeforces.handle) promises.push(fetchCodeforcesProfile());
-    if (appState.profiles.github.handle) promises.push(fetchGitHubProfile());
+    if (appState.profiles.leetcode.handle) promises.push(fetchLeetCodeProfile(silent));
+    if (appState.profiles.codeforces.handle) promises.push(fetchCodeforcesProfile(silent));
+    if (appState.profiles.github.handle) promises.push(fetchGitHubProfile(silent));
 
     await Promise.allSettled(promises);
 
     if (icon) icon.className = 'fas fa-rotate';
-    showToast("All coding profiles synchronized! 🚀", "success");
+    if (!silent) showToast("All coding profiles synchronized! 🚀", "success");
 }
 
 function renderProfileCardsFromState() {
@@ -486,9 +491,12 @@ function calculatePlacementReadiness() {
     const corePct = coreTotal === 0 ? 0 : Math.round((coreDone / coreTotal) * 100);
     const sysPct = sysTotal === 0 ? 0 : Math.round((sysDone / sysTotal) * 100);
 
-    document.getElementById('score-dsa-pct').textContent = `${dsaPct}%`;
-    document.getElementById('score-core-pct').textContent = `${corePct}%`;
-    document.getElementById('score-sys-pct').textContent = `${sysPct}%`;
+    const dsaEl = document.getElementById('score-dsa-pct');
+    const coreEl = document.getElementById('score-core-pct');
+    const sysEl = document.getElementById('score-sys-pct');
+    if (dsaEl) dsaEl.textContent = `${dsaPct}%`;
+    if (coreEl) coreEl.textContent = `${corePct}%`;
+    if (sysEl) sysEl.textContent = `${sysPct}%`;
 
     const lcSolved = appState.profiles.leetcode.solved || 0;
     const cfRating = appState.profiles.codeforces.rating || 0;
@@ -514,11 +522,15 @@ function calculatePlacementReadiness() {
     const medSolved = Math.round(totalCurriculumSolved * 0.45) + (appState.profiles.leetcode.medium || 0);
     const hardSolved = Math.round(totalCurriculumSolved * 0.20) + (appState.profiles.leetcode.hard || 0);
 
-    document.getElementById('stat-easy-solved').textContent = easySolved;
-    document.getElementById('stat-med-solved').textContent = medSolved;
-    document.getElementById('stat-hard-solved').textContent = hardSolved;
+    const easyStatEl = document.getElementById('stat-easy-solved');
+    const medStatEl = document.getElementById('stat-med-solved');
+    const hardStatEl = document.getElementById('stat-hard-solved');
+    if (easyStatEl) easyStatEl.textContent = easySolved;
+    if (medStatEl) medStatEl.textContent = medSolved;
+    if (hardStatEl) hardStatEl.textContent = hardSolved;
 
-    document.getElementById('analytics-streak-val').textContent = `${appState.streak || 1} Day${appState.streak > 1 ? 's' : ''}`;
+    const streakValEl = document.getElementById('analytics-streak-val');
+    if (streakValEl) streakValEl.textContent = `${appState.streak || 1} Day${appState.streak > 1 ? 's' : ''}`;
 }
 
 // 1. Daily View
@@ -558,7 +570,7 @@ function renderWeeklyVelocityChart() {
     chartContainer.innerHTML = '';
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const now = new Date();
-    const currentDayIndex = (now.getDay() + 6) % 7; // 0 for Mon, 6 for Sun
+    const currentDayIndex = (now.getDay() + 6) % 7;
 
     days.forEach((dayName, idx) => {
         const dateObj = new Date();
@@ -788,7 +800,7 @@ function updateCloudHUDText() {
 // ==========================================
 // 🛡️ LAYER 2: INDEXEDDB PERSISTENCE
 // ==========================================
-const DB_NAME = 'PlacementMasteryDB_v4';
+const DB_NAME = 'PlacementMasteryDB_v6';
 const DB_VERSION = 1;
 const STORE_NAME = 'app_state';
 
@@ -985,7 +997,7 @@ async function initializeMultiTierStorage() {
 
     let loadedFromLocal = false;
     try {
-        const saved = localStorage.getItem('placement_mastery_state_v5');
+        const saved = localStorage.getItem('placement_mastery_state_v6');
         if (saved) {
             const parsed = JSON.parse(saved);
             appState = { ...appState, ...parsed };
@@ -1021,7 +1033,7 @@ function saveState() {
 
 function saveToLocalAndIndexedDB() {
     try {
-        localStorage.setItem('placement_mastery_state_v5', JSON.stringify(appState));
+        localStorage.setItem('placement_mastery_state_v6', JSON.stringify(appState));
         saveToIndexedDB(appState);
         updateSyncUIFields();
     } catch (e) {

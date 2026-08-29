@@ -427,6 +427,8 @@
                                 placeholder="LeetCode username (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('leetcode', this.value)"
+                                onkeydown="if(event.key==='Enter') fetchLeetCodeProfile()"
+                                onblur="if(this.value.trim()) fetchLeetCodeProfile(true)"
                             >
                             <button onclick="fetchLeetCodeProfile()" class="px-2.5 py-2 text-xs font-bold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex-shrink-0" title="Sync LeetCode">
                                 <i class="fas fa-arrow-down-long"></i>
@@ -479,6 +481,8 @@
                                 placeholder="Codeforces handle (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('codeforces', this.value)"
+                                onkeydown="if(event.key==='Enter') fetchCodeforcesProfile()"
+                                onblur="if(this.value.trim()) fetchCodeforcesProfile(true)"
                             >
                             <button onclick="fetchCodeforcesProfile()" class="px-2.5 py-2 text-xs font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex-shrink-0" title="Sync Codeforces">
                                 <i class="fas fa-arrow-down-long"></i>
@@ -526,6 +530,8 @@
                                 placeholder="GitHub username (or URL)" 
                                 class="w-full text-xs p-2 bg-white dark:bg-dark-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
                                 onchange="saveProfileHandle('github', this.value)"
+                                onkeydown="if(event.key==='Enter') fetchGitHubProfile()"
+                                onblur="if(this.value.trim()) fetchGitHubProfile(true)"
                             >
                             <button onclick="fetchGitHubProfile()" class="px-2.5 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex-shrink-0" title="Sync GitHub">
                                 <i class="fas fa-arrow-down-long"></i>
