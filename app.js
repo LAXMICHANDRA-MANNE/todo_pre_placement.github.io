@@ -758,7 +758,7 @@ function renderYearlyHeatmap() {
 
             daysGridHTML += `
                 <div 
-                    class="w-full aspect-square rounded-md ${colorClass} ${ringClass} transition-all transform hover:scale-125 cursor-pointer relative group"
+                    class="w-full aspect-square min-w-[14px] min-h-[14px] rounded-md ${colorClass} ${ringClass} transition-all transform hover:scale-125 cursor-pointer relative group flex items-center justify-center text-[8px] font-bold select-none"
                     data-date="${dateStr}"
                     data-count="${count}"
                     onmouseenter="showHeatmapTooltip(event, '${dateStr}', ${count})"
