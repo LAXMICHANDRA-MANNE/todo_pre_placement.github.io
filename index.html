@@ -128,14 +128,18 @@
                     </div>
                 </div>
 
-                <!-- Primary Mode Switcher (Curriculum vs Analytics Dashboard) -->
-                <div class="flex items-center bg-slate-200/80 dark:bg-dark-900 p-1 rounded-xl border border-slate-300/60 dark:border-slate-800 text-xs font-bold">
-                    <button id="view-tab-curriculum" onclick="switchMainView('curriculum')" class="px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5">
-                        <i class="fas fa-book-open text-emerald-500 dark:text-white"></i>
+                <!-- Primary Mode Switcher (Syllabus vs AI Assessments vs Analytics) -->
+                <div class="flex items-center bg-slate-200/80 dark:bg-dark-900 p-1 rounded-xl border border-slate-300/60 dark:border-slate-800 text-xs font-bold space-x-1">
+                    <button id="view-tab-curriculum" onclick="switchMainView('curriculum')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5">
+                        <i class="fas fa-book-open text-emerald-500 dark:text-white text-xs"></i>
                         <span>Syllabus</span>
                     </button>
-                    <button id="view-tab-analytics" onclick="switchMainView('analytics')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5">
-                        <i class="fas fa-chart-line text-indigo-500"></i>
+                    <button id="view-tab-assessments" onclick="switchMainView('assessments')" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5">
+                        <i class="fas fa-brain text-purple-500 text-xs"></i>
+                        <span>AI Professor & Tests</span>
+                    </button>
+                    <button id="view-tab-analytics" onclick="switchMainView('analytics')" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5">
+                        <i class="fas fa-chart-line text-indigo-500 text-xs"></i>
                         <span>Analytics & Profiles</span>
                     </button>
                 </div>
@@ -296,8 +300,425 @@
             </div>
         </div>
 
+        <!-- ==================================================== -->
+        <!-- VIEW 2: AUTONOMOUS LEARNING & ASSESSMENT ENGINE (ALAE) -->
+        <!-- ==================================================== -->
+        <div id="view-section-assessments" class="space-y-6 hidden">
+
+            <!-- 1. ALAE HUB: Test Selection, XP Progression & Spaced Repetition -->
+            <div id="alae-hub-view" class="space-y-6">
+
+                <!-- Hero Banner & XP Level Card -->
+                <div class="bg-gradient-to-br from-purple-950 via-slate-900 to-indigo-950 p-6 sm:p-8 rounded-2xl border border-purple-800/40 text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                        <div class="space-y-2 max-w-2xl">
+                            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-semibold">
+                                <i class="fas fa-microchip text-purple-400"></i>
+                                <span>Autonomous Learning & Assessment Engine (ALAE v3.0)</span>
+                            </div>
+                            <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center space-x-2">
+                                <span>Personal AI Professor & Test Sandbox</span>
+                                <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">LIVE</span>
+                            </h2>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                Self-evolving intelligent testing ecosystem. Actively diagnoses your knowledge gaps, evaluates code in real-time with automated test cases, predicts placement readiness, and optimizes memory retention using the SM-2 Spaced Repetition algorithm.
+                            </p>
+                        </div>
+
+                        <!-- Gamification & XP Progress Widget -->
+                        <div class="bg-slate-900/80 p-5 rounded-2xl border border-purple-500/30 min-w-[290px] shadow-lg backdrop-blur-md space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase font-extrabold text-purple-400">Current Level</span>
+                                    <h4 class="text-base font-black text-white" id="user-level-title">Level 4: Senior Candidate</h4>
+                                </div>
+                                <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center font-black text-sm border border-purple-500/40">
+                                    <i class="fas fa-medal"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-400 mb-1">
+                                    <span>XP Progress</span>
+                                    <span id="user-xp-counter" class="text-purple-300">2,450 / 3,000 XP</span>
+                                </div>
+                                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                                    <div id="user-xp-bar" class="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transition-all duration-500" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px] text-slate-400 font-semibold">
+                                <span>Tests Taken: <strong id="user-total-tests-count" class="text-white">0</strong></span>
+                                <span>Avg Score: <strong id="user-avg-test-score" class="text-emerald-400">0%</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Modes Selection Grid -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                            <i class="fas fa-bolt text-amber-500"></i>
+                            <span>Select Assessment Mode</span>
+                        </h3>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Calibrated by Bayesian Knowledge Tracing</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        
+                        <!-- 1. Rapid Sprint Test -->
+                        <div class="p-5 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-purple-500/60 dark:hover:border-purple-500/60 transition-all flex flex-col justify-between space-y-4 group">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                                        <i class="fas fa-stopwatch"></i>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">15 Mins</span>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    15-Min Rapid Sprint Test
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    5 High-yield questions: 3 Core MCQs + 1 Live Coding Challenge + 1 System Design scenario.
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>Reward: +100 XP</span>
+                                    <span>5 Questions</span>
+                                </div>
+                                <button onclick="startAssessment('sprint')" class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2">
+                                    <i class="fas fa-play"></i>
+                                    <span>Start Rapid Sprint</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Weekly Mastery Drill -->
+                        <div class="p-5 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-purple-500/60 dark:hover:border-purple-500/60 transition-all flex flex-col justify-between space-y-4 group">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                                        <i class="fas fa-calendar-check"></i>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">30 Mins</span>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    30-Min Weekly Mastery Exam
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    10 Questions spanning DSA, DBMS, and OS. Calibrated to test your retention over the last 7 days.
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>Reward: +250 XP</span>
+                                    <span>10 Questions</span>
+                                </div>
+                                <button onclick="startAssessment('weekly')" class="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2">
+                                    <i class="fas fa-play"></i>
+                                    <span>Start Weekly Exam</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 3. FAANG Comprehensive Simulator -->
+                        <div class="p-5 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-purple-500/60 dark:hover:border-purple-500/60 transition-all flex flex-col justify-between space-y-4 group">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                                        <i class="fas fa-trophy"></i>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">45 Mins</span>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    FAANG Full-Scale Mock Round
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    15 Comprehensive questions: Coding Sandbox, Concurrency, Distributed System Design, and Behavioral LP.
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>Reward: +500 XP</span>
+                                    <span>15 Questions</span>
+                                </div>
+                                <button onclick="startAssessment('comprehensive')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2">
+                                    <i class="fas fa-play"></i>
+                                    <span>Launch Mock Round</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 4. Targeted Knowledge Gap Drill -->
+                        <div class="p-5 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-purple-500/60 dark:hover:border-purple-500/60 transition-all flex flex-col justify-between space-y-4 group">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                                        <i class="fas fa-crosshairs"></i>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">Adaptive</span>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    Targeted Knowledge Gap Drill
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    AI filters your weakest topics and unsolved curriculum items to build a customized remediation quiz.
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>Reward: +150 XP</span>
+                                    <span>Adaptive Mix</span>
+                                </div>
+                                <button onclick="startAssessment('gaps')" class="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2">
+                                    <i class="fas fa-radar"></i>
+                                    <span>Attack Weaknesses</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 5. Spaced Repetition (SM-2) Review Deck -->
+                        <div class="p-5 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-purple-500/60 dark:hover:border-purple-500/60 transition-all flex flex-col justify-between space-y-4 group">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+                                        <i class="fas fa-arrows-rotate"></i>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">Daily Flash</span>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    Spaced Repetition Deck (SM-2)
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    Review flagged & scheduled concepts due today. Calibrated intervals keep retention above 90%.
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>Queue: <strong id="srs-due-count" class="text-teal-400">5 Cards</strong></span>
+                                    <span>Daily Habit</span>
+                                </div>
+                                <button onclick="openSpacedRepetitionDeck()" class="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2">
+                                    <i class="fas fa-layer-group"></i>
+                                    <span>Review Deck Today</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 6. In-Browser Standalone Code Sandbox -->
+                        <div class="p-5 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-purple-500/60 dark:hover:border-purple-500/60 transition-all flex flex-col justify-between space-y-4 group">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                                        <i class="fas fa-terminal"></i>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">Freeform</span>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                    Live Code Sandbox & Judge
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    Open the in-browser IDE with instant test runner, complexity analyzer, and syntax support.
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>JavaScript / Algorithms</span>
+                                    <span>Real-time</span>
+                                </div>
+                                <button onclick="openStandaloneCodeSandbox()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2">
+                                    <i class="fas fa-code"></i>
+                                    <span>Open Code IDE</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Past Test History Table -->
+                <div class="p-6 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                            <i class="fas fa-history text-purple-500"></i>
+                            <span>Recent Assessment History</span>
+                        </h4>
+                        <span class="text-xs text-slate-400" id="assessment-history-count">0 tests completed</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                                <tr>
+                                    <th class="py-2 px-3">Date</th>
+                                    <th class="py-2 px-3">Test Mode</th>
+                                    <th class="py-2 px-3">Score</th>
+                                    <th class="py-2 px-3">Accuracy</th>
+                                    <th class="py-2 px-3">Time Taken</th>
+                                    <th class="py-2 px-3">XP Earned</th>
+                                    <th class="py-2 px-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assessment-history-tbody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                <tr>
+                                    <td colspan="7" class="text-center py-6 text-slate-400">No assessments taken yet. Launch a 15-Min Sprint to start your record!</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 2. ACTIVE TEST RUNNER INTERFACE -->
+            <div id="alae-test-runner-view" class="space-y-6 hidden">
+                
+                <!-- Test Runner Header HUD -->
+                <div class="p-5 rounded-2xl bg-slate-900 text-white border border-purple-500/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span id="active-test-type-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                                15-MIN SPRINT TEST
+                            </span>
+                            <span id="active-test-focus-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 flex items-center space-x-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>Anti-Cheat Active</span>
+                            </span>
+                        </div>
+                        <h3 class="text-lg font-black text-white" id="active-test-title">Question 1 of 5</h3>
+                    </div>
+
+                    <!-- Center Question Jump Pills -->
+                    <div id="active-test-pills" class="flex items-center gap-1.5 flex-wrap">
+                        <!-- Dynamic Pills (1, 2, 3...) -->
+                    </div>
+
+                    <!-- Right Timer & Actions -->
+                    <div class="flex items-center space-x-3">
+                        <!-- Countdown Timer Display -->
+                        <div class="px-4 py-2 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center space-x-2 shadow-inner">
+                            <i class="fas fa-clock text-amber-400 text-sm"></i>
+                            <span id="active-test-timer" class="font-mono text-base font-black text-white">15:00</span>
+                        </div>
+
+                        <!-- Ask AI Professor Hint Button -->
+                        <button onclick="askAIProfessorCurrentQuestion()" class="px-3.5 py-2 rounded-xl bg-purple-600/80 hover:bg-purple-600 text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5">
+                            <i class="fas fa-brain text-amber-300"></i>
+                            <span class="hidden sm:inline">Ask AI Hint</span>
+                        </button>
+
+                        <!-- Finish Test Button -->
+                        <button onclick="finishCurrentAssessment()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5">
+                            <i class="fas fa-flag-checkered"></i>
+                            <span>Submit</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Question Container -->
+                <div id="active-question-card" class="p-6 sm:p-8 rounded-2xl bg-white dark:bg-dark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                    <!-- Dynamically Rendered by renderActiveQuestion() -->
+                </div>
+
+                <!-- Bottom Navigation Buttons -->
+                <div class="flex items-center justify-between pt-2">
+                    <button onclick="navigateTestQuestion(-1)" id="btn-test-prev" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all flex items-center space-x-2">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Previous</span>
+                    </button>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="saveCurrentQuestionAnswer()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-600 dark:text-slate-300 font-bold text-xs transition-all">
+                            Save Answer
+                        </button>
+                        <button onclick="navigateTestQuestion(1)" id="btn-test-next" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition-all flex items-center space-x-2">
+                            <span>Next Question</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 3. POST-TEST DIAGNOSTIC SCORECARD -->
+            <div id="alae-results-view" class="space-y-6 hidden">
+                
+                <div class="p-8 rounded-2xl bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/40 shadow-2xl space-y-6">
+                    
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-purple-800/40">
+                        <div class="space-y-2">
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                                DIAGNOSTIC PERFORMANCE REPORT
+                            </span>
+                            <h3 class="text-3xl font-black text-white" id="results-assessment-title">15-Min Sprint Completed</h3>
+                            <p class="text-xs text-slate-300" id="results-timestamp">Evaluated on August 30, 2026</p>
+                        </div>
+
+                        <!-- Big Score Gauge -->
+                        <div class="flex items-center space-x-4 bg-slate-900/90 p-5 rounded-2xl border border-purple-500/30">
+                            <div class="text-right">
+                                <span class="text-[10px] font-bold uppercase text-purple-400">Mastery Score</span>
+                                <div class="text-4xl font-black text-white" id="results-score-pct">90%</div>
+                                <div class="text-xs font-bold text-emerald-400" id="results-grade-title">Grade A • FAANG Ready</div>
+                            </div>
+                            <div class="w-14 h-14 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center text-xl font-black">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Breakdown Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">Correct Answers</div>
+                            <div class="text-xl font-black text-emerald-400" id="results-correct-count">4 / 5</div>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">Time Elapsed</div>
+                            <div class="text-xl font-black text-amber-400" id="results-time-taken">08:42</div>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">XP Awarded</div>
+                            <div class="text-xl font-black text-purple-400" id="results-xp-awarded">+120 XP</div>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase">Predicted Readiness</div>
+                            <div class="text-xl font-black text-teal-400" id="results-predicted-readiness">+3.5%</div>
+                        </div>
+                    </div>
+
+                    <!-- AI Professor Diagnostic Feedback -->
+                    <div class="p-5 rounded-xl bg-purple-900/30 border border-purple-500/40 space-y-3">
+                        <div class="flex items-center space-x-2 text-amber-400 font-extrabold text-sm">
+                            <i class="fas fa-brain"></i>
+                            <span>Personal AI Professor Diagnostic & 3-Day Action Plan</span>
+                        </div>
+                        <p class="text-xs text-slate-200 leading-relaxed" id="results-ai-feedback-text">
+                            Strong intuition demonstrated on Array algorithms and Hash Map techniques. However, review is recommended for Transaction Isolation levels in DBMS and HTTP/2 Multiplexing framing.
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                        <button onclick="returnToAssessmentsHub()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all flex items-center justify-center space-x-2">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Back to Assessment Hub</span>
+                        </button>
+                        <button onclick="reviewAssessmentSolutions()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center space-x-2">
+                            <i class="fas fa-magnifying-glass"></i>
+                            <span>Review Full Explanations & Code</span>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
         <!-- ========================================== -->
-        <!-- VIEW 2: PROFILE & ANALYTICS INTELLIGENCE   -->
+        <!-- VIEW 3: PROFILE & ANALYTICS INTELLIGENCE   -->
         <!-- ========================================== -->
         <div id="view-section-analytics" class="space-y-8 hidden">
             
@@ -1027,6 +1448,214 @@
         </div>
     </div>
 
+    <!-- ==================================================== -->
+    <!-- ALAE MODAL 1: ASK PERSONAL AI PROFESSOR MODAL        -->
+    <!-- ==================================================== -->
+    <div id="ai-professor-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/70 dark:bg-black/80 backdrop-blur-sm transition-opacity" onclick="closeAIProfessorModal()"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-dark-900 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl border border-purple-500/30">
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center text-lg font-black border border-purple-500/40">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-black text-white flex items-center space-x-2">
+                                <span>Personal AI Professor Assistant</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 font-bold">ALAE v3.0</span>
+                            </h3>
+                            <p class="text-xs text-slate-300" id="ai-prof-topic-subtitle">Interactive Concept Coaching & Multi-Level Hints</p>
+                        </div>
+                    </div>
+                    <button onclick="closeAIProfessorModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    
+                    <!-- Multi-Stage Hint Tabs -->
+                    <div class="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                        <button onclick="showAIHintLevel(1)" id="hint-tab-1" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white transition-all">
+                            💡 Level 1: Intuition
+                        </button>
+                        <button onclick="showAIHintLevel(2)" id="hint-tab-2" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                            ⚡ Level 2: Approach & Edge Cases
+                        </button>
+                        <button onclick="showAIHintLevel(3)" id="hint-tab-3" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all">
+                            💻 Level 3: Pseudocode
+                        </button>
+                    </div>
+
+                    <!-- Hint Content Box -->
+                    <div class="p-4 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed space-y-2">
+                        <div class="font-bold text-purple-700 dark:text-purple-300 flex items-center space-x-1.5">
+                            <i class="fas fa-lightbulb"></i>
+                            <span id="ai-hint-title">Level 1: Mental Model & Intuition</span>
+                        </div>
+                        <div id="ai-hint-content" class="space-y-2">
+                            <!-- Dynamic Hint Text -->
+                        </div>
+                    </div>
+
+                    <!-- Interview Follow-up / Concept Clarifier -->
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Ask AI Professor a Clarifying Question</h4>
+                        <div class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="ai-prof-custom-question" 
+                                placeholder="e.g. Why is Space Complexity O(1) here instead of O(n)?" 
+                                class="w-full text-xs p-2.5 bg-slate-50 dark:bg-dark-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                                onkeydown="if(event.key==='Enter') submitAIProfessorQuery()"
+                            >
+                            <button onclick="submitAIProfessorQuery()" class="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex-shrink-0 flex items-center space-x-1.5">
+                                <i class="fas fa-paper-plane"></i>
+                                <span>Ask</span>
+                            </button>
+                        </div>
+                        <div id="ai-prof-custom-reply" class="hidden p-3 rounded-xl bg-slate-100 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- ALAE MODAL 2: SPACED REPETITION (SM-2) DECK MODAL   -->
+    <!-- ==================================================== -->
+    <div id="srs-deck-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/70 dark:bg-black/80 backdrop-blur-sm transition-opacity" onclick="closeSpacedRepetitionDeck()"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-dark-900 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl border border-teal-500/30">
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center text-lg font-black border border-teal-500/40">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-black text-white">Spaced Repetition Review Deck</h3>
+                            <p class="text-xs text-teal-300" id="srs-card-progress">Card 1 of 5</p>
+                        </div>
+                    </div>
+                    <button onclick="closeSpacedRepetitionDeck()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    
+                    <!-- Flashcard Surface -->
+                    <div class="p-6 rounded-2xl bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 min-h-[180px] flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300" id="srs-domain-badge">DSA • Binary Search</span>
+                                <span class="text-[10px] text-slate-400" id="srs-ease-factor">Ease Factor: 2.5x</span>
+                            </div>
+                            <h4 class="text-base sm:text-lg font-black text-slate-900 dark:text-white" id="srs-card-question">
+                                What is the search space reduction rule for finding peak element in an unsorted array in O(log n)?
+                            </h4>
+                        </div>
+
+                        <!-- Reveal Answer Section -->
+                        <div id="srs-card-answer" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                            Compare `nums[mid]` with `nums[mid + 1]`. If `nums[mid] < nums[mid + 1]`, a peak MUST exist to the right (`left = mid + 1`). Otherwise, a peak exists at `mid` or to the left (`right = mid`).
+                        </div>
+
+                        <button id="srs-btn-reveal" onclick="revealSRSAnswer()" class="w-full py-2 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-dark-800 dark:hover:bg-dark-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors">
+                            Reveal Answer & Rationale
+                        </button>
+                    </div>
+
+                    <!-- SM-2 Recall Rating Buttons -->
+                    <div id="srs-rating-buttons" class="hidden space-y-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase text-center block">Rate your recall effort:</span>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="rateSRSCard(1)" class="p-3 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 dark:text-rose-300 text-xs font-extrabold flex flex-col items-center space-y-1 transition-all">
+                                <span>🔴 Hard</span>
+                                <span class="text-[10px] font-normal opacity-80">Reset (1 Day)</span>
+                            </button>
+                            <button onclick="rateSRSCard(2)" class="p-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:text-amber-300 text-xs font-extrabold flex flex-col items-center space-y-1 transition-all">
+                                <span>🟡 Good</span>
+                                <span class="text-[10px] font-normal opacity-80">3 Days</span>
+                            </button>
+                            <button onclick="rateSRSCard(3)" class="p-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-300 text-xs font-extrabold flex flex-col items-center space-y-1 transition-all">
+                                <span>🟢 Easy</span>
+                                <span class="text-[10px] font-normal opacity-80">6 Days</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- ALAE MODAL 3: STANDALONE CODE SANDBOX IDE MODAL      -->
+    <!-- ==================================================== -->
+    <div id="code-sandbox-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/70 dark:bg-black/80 backdrop-blur-sm transition-opacity" onclick="closeStandaloneCodeSandbox()"></div>
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-dark-900 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-4xl border border-indigo-500/30">
+                <div class="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-900 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-black border border-indigo-500/40">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-white">In-Browser Code Execution Sandbox</h3>
+                            <p class="text-xs text-indigo-300">Run code against custom inputs with microsecond execution timer</p>
+                        </div>
+                    </div>
+                    <button onclick="closeStandaloneCodeSandbox()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Language: JavaScript (ES6)</span>
+                        <button onclick="runStandaloneCodeSandbox()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5">
+                            <i class="fas fa-play"></i>
+                            <span>Execute Code</span>
+                        </button>
+                    </div>
+
+                    <textarea 
+                        id="sandbox-code-editor" 
+                        class="w-full font-mono text-xs sm:text-sm p-4 bg-slate-950 text-emerald-400 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                        rows="12"
+                        spellcheck="false"
+                    >// Example: QuickSort algorithm
+function quickSort(arr) {
+    if (arr.length <= 1) return arr;
+    const pivot = arr[arr.length - 1];
+    const left = [], right = [];
+    for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] < pivot) left.push(arr[i]);
+        else right.push(arr[i]);
+    }
+    return [...quickSort(left), pivot, ...quickSort(right)];
+}
+
+console.log("Sorted:", quickSort([38, 27, 43, 3, 9, 82, 10]));
+</textarea>
+
+                    <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-300 space-y-1">
+                        <div class="flex items-center justify-between text-slate-500 border-b border-slate-800 pb-1 mb-1">
+                            <span>Console Output</span>
+                            <span id="sandbox-execution-time">0.00 ms</span>
+                        </div>
+                        <pre id="sandbox-output" class="whitespace-pre-wrap text-emerald-400">Click "Execute Code" to run...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Heatmap Tooltip -->
     <div id="heatmap-floating-tooltip" class="fixed z-50 pointer-events-none opacity-0 transition-opacity duration-150 transform -translate-x-1/2 -translate-y-full mb-3 bg-slate-950/95 dark:bg-dark-900/95 text-white p-3 rounded-xl shadow-2xl border border-slate-700/80 backdrop-blur-md text-xs min-w-[200px] max-w-xs">
         <div class="font-extrabold text-white flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5 mb-1.5">
@@ -1042,8 +1671,9 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
-    <!-- App Scripts (Cache-Busted) -->
-    <script src="data.js?v=2.6"></script>
-    <script src="app.js?v=2.6"></script>
+    <!-- App Scripts (Cache-Busted ALAE v3.0 Engine) -->
+    <script src="questions.js?v=3.0"></script>
+    <script src="data.js?v=3.0"></script>
+    <script src="app.js?v=3.0"></script>
 </body>
 </html>

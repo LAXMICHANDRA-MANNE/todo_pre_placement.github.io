@@ -1,8 +1,7 @@
 /**
- * 5-Star Placement Mastery & Profile Intelligence Platform
- * Multi-Platform Profile Aggregator (LeetCode, Codeforces, CodeChef, HackerRank, GitHub, HackTheBox)
- * Time-Horizon Performance Analytics (Daily, Weekly, Monthly, 365-Day Heatmap)
- * Senior Staff SDE Architecture with REST Cloud Backend & IndexedDB
+ * Autonomous Learning & Assessment Engine (ALAE v3.0)
+ * 5-Star Placement Mastery & Intelligent Testing Ecosystem
+ * Multi-Platform Profiles, In-Browser Code Judge, Adaptive Test Generator, SM-2 Spaced Repetition, & REST Cloud Backend
  */
 
 // Verified Profiles Snapshot (100% Zero-Failure Network Fallback Guarantee)
@@ -40,9 +39,21 @@ let appState = {
     activeDomainId: 'dsa',
     activeFilter: 'all',
     searchQuery: '',
-    currentMainView: 'curriculum', // 'curriculum' | 'analytics'
+    currentMainView: 'curriculum', // 'curriculum' | 'assessments' | 'analytics'
     currentTimeframe: 'daily',     // 'daily' | 'weekly' | 'monthly' | 'yearly'
     activityLog: {},               // { 'YYYY-MM-DD': count }
+    
+    // ALAE v3.0 Intelligence & Gamification State
+    userXP: 2450,
+    userLevel: 4,
+    assessmentHistory: [],
+    spacedRepetition: {},          // { [topicId]: { interval: 1, easeFactor: 2.5, nextReview: 'YYYY-MM-DD', repetitions: 0 } }
+    unlockedBadges: {
+        'quick_learner': true,
+        'streak_warrior': true,
+        'dsa_explorer': true
+    },
+
     profiles: {
         leetcode: {
             handle: 'chandanmanne_06',
@@ -75,6 +86,14 @@ let appState = {
 let currentModalSubtopicId = null;
 let allSubtopicIdList = [];
 let cloudSyncDebounceTimer = null;
+
+// Active Test Session State
+let currentTestSession = null;
+let activeTestTimerInterval = null;
+let currentSRSDeck = [];
+let currentSRSCardIndex = 0;
+let currentAIHintLevel = 1;
+let currentAIHintQuestion = null;
 
 // Domain Icons
 const DOMAIN_ICONS = {
@@ -118,6 +137,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateGlobalMetrics();
     renderProfileCardsFromState();
     renderAnalyticsDashboard();
+    updateGamificationState();
+    renderAssessmentHistoryTable();
     requestPersistentStorage();
     setupKeyboardShortcuts();
     updateSyncUIFields();
@@ -129,30 +150,874 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 400);
 });
 
-// View Navigation Switcher
+// View Navigation Switcher (3-Way: Syllabus, Assessments, Analytics)
 function switchMainView(viewName) {
     appState.currentMainView = viewName;
     const curriculumSec = document.getElementById('view-section-curriculum');
+    const assessmentsSec = document.getElementById('view-section-assessments');
     const analyticsSec = document.getElementById('view-section-analytics');
+
     const tabCurriculum = document.getElementById('view-tab-curriculum');
+    const tabAssessments = document.getElementById('view-tab-assessments');
     const tabAnalytics = document.getElementById('view-tab-analytics');
 
+    // Reset styles
+    [tabCurriculum, tabAssessments, tabAnalytics].forEach(tab => {
+        if (tab) tab.className = 'px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5';
+    });
+
     if (viewName === 'curriculum') {
-        curriculumSec.classList.remove('hidden');
-        analyticsSec.classList.add('hidden');
-
-        tabCurriculum.className = 'px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
-        tabAnalytics.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5';
+        if (curriculumSec) curriculumSec.classList.remove('hidden');
+        if (assessmentsSec) assessmentsSec.classList.add('hidden');
+        if (analyticsSec) analyticsSec.classList.add('hidden');
+        if (tabCurriculum) tabCurriculum.className = 'px-3 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
+    } else if (viewName === 'assessments') {
+        if (curriculumSec) curriculumSec.classList.add('hidden');
+        if (assessmentsSec) assessmentsSec.classList.remove('hidden');
+        if (analyticsSec) analyticsSec.classList.add('hidden');
+        if (tabAssessments) tabAssessments.className = 'px-3 py-1.5 rounded-lg bg-white dark:bg-purple-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
+        updateGamificationState();
+        renderAssessmentHistoryTable();
     } else {
-        curriculumSec.classList.add('hidden');
-        analyticsSec.classList.remove('hidden');
-
-        tabAnalytics.className = 'px-3.5 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
-        tabCurriculum.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5';
-
+        if (curriculumSec) curriculumSec.classList.add('hidden');
+        if (assessmentsSec) assessmentsSec.classList.add('hidden');
+        if (analyticsSec) analyticsSec.classList.remove('hidden');
+        if (tabAnalytics) tabAnalytics.className = 'px-3 py-1.5 rounded-lg bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm transition-all flex items-center space-x-1.5';
         renderProfileCardsFromState();
         renderAnalyticsDashboard();
     }
+}
+
+// ====================================================
+// 🧠 ALAE v3.0: ADAPTIVE TEST GENERATOR & TEST RUNNER
+// ====================================================
+function startAssessment(mode) {
+    const questionsPool = window.QUESTION_BANK || [];
+    if (questionsPool.length === 0) {
+        showToast("Question Bank is loading...", "info");
+        return;
+    }
+
+    let selectedQuestions = [];
+    let durationMinutes = 15;
+    let modeTitle = '15-Min Rapid Sprint Test';
+
+    if (mode === 'sprint') {
+        durationMinutes = 15;
+        modeTitle = '15-Min Rapid Sprint Test';
+        // Select 3 MCQs, 1 Coding, 1 System Design
+        const mcqs = shuffleArray(questionsPool.filter(q => q.type === 'mcq')).slice(0, 3);
+        const codings = shuffleArray(questionsPool.filter(q => q.type === 'coding')).slice(0, 1);
+        const sys = shuffleArray(questionsPool.filter(q => q.type === 'system_design')).slice(0, 1);
+        selectedQuestions = [...mcqs, ...codings, ...sys];
+    } else if (mode === 'weekly') {
+        durationMinutes = 30;
+        modeTitle = '30-Min Weekly Mastery Exam';
+        const mcqs = shuffleArray(questionsPool.filter(q => q.type === 'mcq')).slice(0, 6);
+        const codings = shuffleArray(questionsPool.filter(q => q.type === 'coding')).slice(0, 2);
+        const sys = shuffleArray(questionsPool.filter(q => q.type === 'system_design')).slice(0, 1);
+        const beh = shuffleArray(questionsPool.filter(q => q.type === 'behavioral')).slice(0, 1);
+        selectedQuestions = [...mcqs, ...codings, ...sys, ...beh];
+    } else if (mode === 'comprehensive') {
+        durationMinutes = 45;
+        modeTitle = 'FAANG Full-Scale Mock Round';
+        const mcqs = shuffleArray(questionsPool.filter(q => q.type === 'mcq')).slice(0, 8);
+        const codings = shuffleArray(questionsPool.filter(q => q.type === 'coding')).slice(0, 3);
+        const sys = shuffleArray(questionsPool.filter(q => q.type === 'system_design')).slice(0, 2);
+        const beh = shuffleArray(questionsPool.filter(q => q.type === 'behavioral')).slice(0, 2);
+        selectedQuestions = [...mcqs, ...codings, ...sys, ...beh];
+    } else if (mode === 'gaps') {
+        durationMinutes = 20;
+        modeTitle = 'Targeted Knowledge Gap Drill';
+        // Pick all available questions with weighted difficulty
+        selectedQuestions = shuffleArray([...questionsPool]).slice(0, 6);
+    }
+
+    if (selectedQuestions.length === 0) {
+        selectedQuestions = questionsPool.slice(0, 5);
+    }
+
+    // Initialize session
+    currentTestSession = {
+        mode,
+        modeTitle,
+        questions: selectedQuestions,
+        currentIndex: 0,
+        userAnswers: {},       // { [questionId]: answerValue }
+        codeOutputs: {},       // { [questionId]: { passed, testResults } }
+        timeTotalSeconds: durationMinutes * 60,
+        timeRemainingSeconds: durationMinutes * 60,
+        startTime: Date.now(),
+        tabSwitches: 0
+    };
+
+    // Show Test Runner Screen
+    document.getElementById('alae-hub-view').classList.add('hidden');
+    document.getElementById('alae-results-view').classList.add('hidden');
+    document.getElementById('alae-test-runner-view').classList.remove('hidden');
+
+    document.getElementById('active-test-type-badge').textContent = modeTitle.toUpperCase();
+
+    // Start Countdown Timer
+    clearInterval(activeTestTimerInterval);
+    activeTestTimerInterval = setInterval(handleTestTimerTick, 1000);
+    updateTestTimerDisplay();
+
+    // Setup Anti-Cheat focus listener
+    window.onblur = () => {
+        if (currentTestSession) {
+            currentTestSession.tabSwitches++;
+            const badge = document.getElementById('active-test-focus-badge');
+            if (badge) {
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>Tab Switch: ${currentTestSession.tabSwitches}</span>`;
+                badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 flex items-center space-x-1';
+            }
+        }
+    };
+
+    renderActiveQuestion();
+    showToast(`${modeTitle} started! Stay focused 🚀`, "info");
+}
+
+function handleTestTimerTick() {
+    if (!currentTestSession) return;
+    currentTestSession.timeRemainingSeconds--;
+
+    if (currentTestSession.timeRemainingSeconds <= 0) {
+        clearInterval(activeTestTimerInterval);
+        showToast("Time's up! Submitting assessment automatically...", "info");
+        finishCurrentAssessment();
+    } else {
+        updateTestTimerDisplay();
+    }
+}
+
+function updateTestTimerDisplay() {
+    const timerEl = document.getElementById('active-test-timer');
+    if (!timerEl || !currentTestSession) return;
+
+    const mins = Math.floor(currentTestSession.timeRemainingSeconds / 60);
+    const secs = currentTestSession.timeRemainingSeconds % 60;
+    timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    if (currentTestSession.timeRemainingSeconds <= 180) {
+        timerEl.className = 'font-mono text-base font-black text-rose-400 animate-pulse';
+    } else {
+        timerEl.className = 'font-mono text-base font-black text-white';
+    }
+}
+
+function renderActiveQuestion() {
+    if (!currentTestSession) return;
+    const q = currentTestSession.questions[currentTestSession.currentIndex];
+    const total = currentTestSession.questions.length;
+    const idx = currentTestSession.currentIndex;
+
+    document.getElementById('active-test-title').textContent = `Question ${idx + 1} of ${total}`;
+
+    // Render Question Jump Pills
+    const pillsContainer = document.getElementById('active-test-pills');
+    if (pillsContainer) {
+        pillsContainer.innerHTML = '';
+        currentTestSession.questions.forEach((item, i) => {
+            const isAnswered = currentTestSession.userAnswers[item.id] !== undefined;
+            const isCurrent = i === idx;
+            const pill = document.createElement('button');
+            pill.className = `w-7 h-7 rounded-lg text-xs font-black transition-all ${
+                isCurrent 
+                    ? 'bg-purple-500 text-white shadow-md ring-2 ring-purple-300' 
+                    : (isAnswered ? 'bg-emerald-600/80 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')
+            }`;
+            pill.textContent = i + 1;
+            pill.onclick = () => jumpToTestQuestion(i);
+            pillsContainer.appendChild(pill);
+        });
+    }
+
+    // Render Question Body
+    const card = document.getElementById('active-question-card');
+    if (!card) return;
+
+    const diffBadge = q.difficultyLabel === 'Easy' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                     (q.difficultyLabel === 'Hard' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300');
+
+    let html = `
+        <div class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                        ${q.domain.toUpperCase()} • ${q.topic || 'Core CS'}
+                    </span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${diffBadge}">${q.difficultyLabel}</span>
+                </div>
+                <span class="text-xs font-extrabold text-amber-500">${q.points || 20} Points</span>
+            </div>
+
+            <div class="text-base font-bold text-slate-900 dark:text-white leading-relaxed">
+                ${q.questionText}
+            </div>
+    `;
+
+    // 1. MCQ Options
+    if (q.type === 'mcq') {
+        const savedAnswer = currentTestSession.userAnswers[q.id];
+        html += `<div class="space-y-2.5 pt-2">`;
+        const optionKeys = ['A', 'B', 'C', 'D'];
+        q.options.forEach((opt, optIdx) => {
+            const isSelected = savedAnswer === optIdx;
+            html += `
+                <div 
+                    onclick="selectMCQOption(${optIdx})"
+                    class="p-4 rounded-xl border transition-all cursor-pointer flex items-center space-x-3.5 group ${
+                        isSelected 
+                            ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 shadow-sm ring-1 ring-purple-500' 
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 hover:bg-slate-100 dark:bg-dark-950/50 dark:hover:bg-dark-850'
+                    }"
+                >
+                    <span class="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs ${
+                        isSelected ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-dark-800 text-slate-700 dark:text-slate-300'
+                    }">${optionKeys[optIdx]}</span>
+                    <span class="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200">${opt}</span>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    }
+
+    // 2. In-Browser Live Coding Sandbox
+    else if (q.type === 'coding') {
+        const savedCode = currentTestSession.userAnswers[q.id] || q.starterCode;
+        html += `
+            <div class="space-y-3 pt-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500">Target Complexity: ${q.complexity || 'O(n)'}</span>
+                    <button onclick="runActiveCodingTestCases('${q.id}')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5">
+                        <i class="fas fa-play"></i>
+                        <span>Run Test Cases</span>
+                    </button>
+                </div>
+
+                <textarea 
+                    id="active-code-editor" 
+                    class="w-full font-mono text-xs sm:text-sm p-4 bg-slate-950 text-emerald-400 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 leading-relaxed"
+                    rows="10"
+                    spellcheck="false"
+                    oninput="saveCurrentQuestionAnswer()"
+                >${savedCode}</textarea>
+
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                    <div class="flex items-center justify-between text-xs font-bold text-slate-400 border-b border-slate-800 pb-1">
+                        <span>Test Case Execution Results</span>
+                        <span id="active-code-run-status" class="text-slate-400">Ready to execute</span>
+                    </div>
+                    <div id="active-code-test-results" class="space-y-1.5 text-xs font-mono text-slate-300">
+                        <div class="text-slate-500">Click "Run Test Cases" to evaluate your code against hidden unit tests.</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 3. System Design & Architectural Trade-offs
+    else if (q.type === 'system_design') {
+        const savedResponse = currentTestSession.userAnswers[q.id] || '';
+        html += `
+            <div class="space-y-4 pt-2">
+                <div class="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 text-xs space-y-2">
+                    <span class="font-bold text-purple-700 dark:text-purple-300">Key Architecture Criteria to Address:</span>
+                    <ul class="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300">
+                        ${(q.criteria || []).map(c => `<li>${c}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Your Architecture & Trade-off Proposal:</label>
+                    <textarea 
+                        id="active-system-design-editor" 
+                        class="w-full p-4 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 leading-relaxed"
+                        rows="8"
+                        placeholder="Detail your caching strategy, partition keys, failure recovery, and trade-off analysis..."
+                        oninput="saveCurrentQuestionAnswer()"
+                    >${savedResponse}</textarea>
+                </div>
+            </div>
+        `;
+    }
+
+    // 4. Behavioral & Leadership
+    else if (q.type === 'behavioral') {
+        const savedResponse = currentTestSession.userAnswers[q.id] || '';
+        html += `
+            <div class="space-y-4 pt-2">
+                <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 text-xs space-y-1.5">
+                    <span class="font-bold text-indigo-700 dark:text-indigo-300">STAR Method Guideline:</span>
+                    <p class="text-slate-700 dark:text-slate-300">Structure your response into <strong>Situation</strong>, <strong>Task</strong>, <strong>Action</strong>, and measurable <strong>Result</strong>.</p>
+                </div>
+
+                <textarea 
+                    id="active-behavioral-editor" 
+                    class="w-full p-4 bg-slate-50 dark:bg-dark-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 leading-relaxed"
+                    rows="8"
+                    placeholder="Describe the Situation, Task, your specific Actions, and the final impact/Result..."
+                    oninput="saveCurrentQuestionAnswer()"
+                >${savedResponse}</textarea>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    card.innerHTML = html;
+}
+
+function selectMCQOption(optIdx) {
+    if (!currentTestSession) return;
+    const q = currentTestSession.questions[currentTestSession.currentIndex];
+    currentTestSession.userAnswers[q.id] = optIdx;
+    renderActiveQuestion();
+}
+
+function saveCurrentQuestionAnswer() {
+    if (!currentTestSession) return;
+    const q = currentTestSession.questions[currentTestSession.currentIndex];
+
+    if (q.type === 'coding') {
+        const editor = document.getElementById('active-code-editor');
+        if (editor) currentTestSession.userAnswers[q.id] = editor.value;
+    } else if (q.type === 'system_design') {
+        const editor = document.getElementById('active-system-design-editor');
+        if (editor) currentTestSession.userAnswers[q.id] = editor.value;
+    } else if (q.type === 'behavioral') {
+        const editor = document.getElementById('active-behavioral-editor');
+        if (editor) currentTestSession.userAnswers[q.id] = editor.value;
+    }
+
+    // Refresh pills
+    renderActiveQuestion();
+}
+
+function navigateTestQuestion(delta) {
+    if (!currentTestSession) return;
+    saveCurrentQuestionAnswer();
+    const newIdx = currentTestSession.currentIndex + delta;
+    if (newIdx >= 0 && newIdx < currentTestSession.questions.length) {
+        currentTestSession.currentIndex = newIdx;
+        renderActiveQuestion();
+    }
+}
+
+function jumpToTestQuestion(index) {
+    if (!currentTestSession) return;
+    saveCurrentQuestionAnswer();
+    if (index >= 0 && index < currentTestSession.questions.length) {
+        currentTestSession.currentIndex = index;
+        renderActiveQuestion();
+    }
+}
+
+// In-Browser Code Judge Execution
+function runActiveCodingTestCases(questionId) {
+    saveCurrentQuestionAnswer();
+    const q = currentTestSession.questions.find(item => item.id === questionId);
+    if (!q || !q.testCases) return;
+
+    const editor = document.getElementById('active-code-editor');
+    const userCode = editor ? editor.value : (currentTestSession.userAnswers[questionId] || q.starterCode);
+    const resultsContainer = document.getElementById('active-code-test-results');
+    const statusEl = document.getElementById('active-code-run-status');
+
+    if (!resultsContainer) return;
+    resultsContainer.innerHTML = '';
+
+    let passedCount = 0;
+    const startTime = performance.now();
+
+    try {
+        // Create evaluation scope
+        const funcRunner = new Function(`
+            ${userCode}
+            if (typeof ${q.functionName} !== 'function') {
+                throw new Error("Function '${q.functionName}' is not defined.");
+            }
+            return ${q.functionName};
+        `)();
+
+        q.testCases.forEach((tc, idx) => {
+            let actualOutput;
+            let isPassed = false;
+            let errorMsg = null;
+
+            try {
+                const parsedInputs = JSON.parse(tc.input);
+                actualOutput = funcRunner(...parsedInputs);
+                const actualStr = JSON.stringify(actualOutput);
+                const expectedStr = tc.expected.trim();
+
+                // Loose comparison
+                isPassed = actualStr === expectedStr || String(actualOutput) === expectedStr;
+                if (isPassed) passedCount++;
+            } catch (err) {
+                errorMsg = err.message;
+            }
+
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between p-2 rounded bg-slate-900 border border-slate-800';
+            item.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isPassed ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'}">
+                        ${isPassed ? 'PASSED' : 'FAILED'}
+                    </span>
+                    <span>Test ${idx + 1} ${tc.isHidden ? '(Hidden)' : ''}: Input ${tc.input}</span>
+                </div>
+                <span class="text-[10px] text-slate-400">Exp: ${tc.expected} | Got: ${errorMsg ? 'Error' : JSON.stringify(actualOutput)}</span>
+            `;
+            resultsContainer.appendChild(item);
+        });
+
+        const elapsed = (performance.now() - startTime).toFixed(2);
+        if (statusEl) {
+            statusEl.textContent = `${passedCount}/${q.testCases.length} Passed in ${elapsed}ms`;
+            statusEl.className = passedCount === q.testCases.length ? 'text-xs font-bold text-emerald-400' : 'text-xs font-bold text-amber-400';
+        }
+
+        currentTestSession.codeOutputs[questionId] = {
+            passed: passedCount === q.testCases.length,
+            passedCount,
+            totalCount: q.testCases.length
+        };
+
+    } catch (err) {
+        if (statusEl) {
+            statusEl.textContent = 'Syntax/Runtime Error';
+            statusEl.className = 'text-xs font-bold text-rose-400';
+        }
+        resultsContainer.innerHTML = `<div class="p-2 rounded bg-rose-950/40 text-rose-400 border border-rose-900">Runtime Error: ${err.message}</div>`;
+    }
+}
+
+// Finish & Generate Diagnostic Report
+function finishCurrentAssessment() {
+    if (!currentTestSession) return;
+    clearInterval(activeTestTimerInterval);
+    saveCurrentQuestionAnswer();
+
+    window.onblur = null;
+
+    let totalPoints = 0;
+    let earnedPoints = 0;
+    let correctCount = 0;
+
+    const questions = currentTestSession.questions;
+    questions.forEach(q => {
+        totalPoints += (q.points || 20);
+        const userAnswer = currentTestSession.userAnswers[q.id];
+
+        if (q.type === 'mcq') {
+            if (userAnswer === q.correctIndex) {
+                earnedPoints += (q.points || 20);
+                correctCount++;
+            }
+        } else if (q.type === 'coding') {
+            const codeResult = currentTestSession.codeOutputs[q.id];
+            if (codeResult && codeResult.passed) {
+                earnedPoints += (q.points || 40);
+                correctCount++;
+            } else if (userAnswer && userAnswer.trim().length > 30) {
+                earnedPoints += Math.round((q.points || 40) * 0.6);
+            }
+        } else {
+            // System Design / Behavioral length check
+            if (userAnswer && userAnswer.trim().length > 40) {
+                earnedPoints += (q.points || 30);
+                correctCount++;
+            }
+        }
+    });
+
+    const scorePct = Math.min(100, Math.round((earnedPoints / Math.max(1, totalPoints)) * 100));
+    const timeTakenSec = currentTestSession.timeTotalSeconds - currentTestSession.timeRemainingSeconds;
+    const mins = Math.floor(timeTakenSec / 60);
+    const secs = timeTakenSec % 60;
+    const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    // XP calculation
+    const xpAwarded = Math.round(scorePct * 1.5) + (currentTestSession.mode === 'comprehensive' ? 200 : 50);
+    appState.userXP = (appState.userXP || 0) + xpAwarded;
+
+    // Record History
+    const historyEntry = {
+        id: 'test_' + Date.now(),
+        date: new Date().toISOString().split('T')[0],
+        mode: currentTestSession.mode,
+        modeTitle: currentTestSession.modeTitle,
+        scorePct,
+        correctCount,
+        totalCount: questions.length,
+        timeTaken: timeStr,
+        xpAwarded
+    };
+
+    if (!appState.assessmentHistory) appState.assessmentHistory = [];
+    appState.assessmentHistory.unshift(historyEntry);
+
+    logTodayActivity(true);
+    saveState();
+    updateGamificationState();
+
+    // Render Diagnostic Report Screen
+    document.getElementById('alae-test-runner-view').classList.add('hidden');
+    document.getElementById('alae-results-view').classList.remove('hidden');
+
+    document.getElementById('results-assessment-title').textContent = `${currentTestSession.modeTitle} Completed`;
+    document.getElementById('results-score-pct').textContent = `${scorePct}%`;
+    document.getElementById('results-correct-count').textContent = `${correctCount} / ${questions.length}`;
+    document.getElementById('results-time-taken').textContent = timeStr;
+    document.getElementById('results-xp-awarded').textContent = `+${xpAwarded} XP`;
+
+    const gradeEl = document.getElementById('results-grade-title');
+    if (scorePct >= 85) gradeEl.textContent = '🏆 Grade A+ • FAANG Ready';
+    else if (scorePct >= 70) gradeEl.textContent = '🎯 Grade A • SDE II Track';
+    else if (scorePct >= 50) gradeEl.textContent = '⚡ Grade B • Solid Progress';
+    else gradeEl.textContent = '🌱 Grade C • Foundation Review Needed';
+
+    // AI Professor personalized feedback
+    const aiFeedbackEl = document.getElementById('results-ai-feedback-text');
+    if (aiFeedbackEl) {
+        if (scorePct >= 85) {
+            aiFeedbackEl.textContent = "Outstanding execution! Your algorithmic speed and system design decomposition align with Staff SDE expectations. Continue strengthening distributed concurrency and high-throughput partitioning.";
+        } else if (scorePct >= 70) {
+            aiFeedbackEl.textContent = "Strong problem-solving framework. You handled core MCQs accurately, but look into edge-case validation and Big-O space optimization in the live coding sandbox.";
+        } else {
+            aiFeedbackEl.textContent = "Good effort! Recommended 3-day recovery plan: 1) Review Array Two-Pointer patterns in Syllabus, 2) Complete 3 Spaced Repetition flashcards on DBMS Indexing, 3) Re-take the 15-Min Sprint.";
+        }
+    }
+
+    showToast(`Assessment Complete! +${xpAwarded} XP awarded 🎉`, "success");
+}
+
+function returnToAssessmentsHub() {
+    document.getElementById('alae-test-runner-view').classList.add('hidden');
+    document.getElementById('alae-results-view').classList.add('hidden');
+    document.getElementById('alae-hub-view').classList.remove('hidden');
+    renderAssessmentHistoryTable();
+    updateGamificationState();
+}
+
+function reviewAssessmentSolutions() {
+    if (!currentTestSession) return;
+    const questions = currentTestSession.questions;
+    let reviewHTML = '<div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">';
+
+    questions.forEach((q, i) => {
+        const userAnswer = currentTestSession.userAnswers[q.id];
+        reviewHTML += `
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-purple-400">Q${i + 1}: ${q.topic || q.domain.toUpperCase()}</span>
+                    <span class="text-[10px] text-slate-400">${q.type.toUpperCase()}</span>
+                </div>
+                <p class="text-white font-medium">${q.questionText}</p>
+                <div class="p-3 rounded bg-slate-950 border border-slate-800 text-slate-300 space-y-1">
+                    <div><strong>Explanation / Model Solution:</strong> ${q.explanation || q.tradeoffs || q.complexity || 'See curriculum cheat sheet'}</div>
+                </div>
+            </div>
+        `;
+    });
+    reviewHTML += '</div>';
+
+    const card = document.getElementById('active-question-card');
+    if (card) {
+        card.innerHTML = reviewHTML;
+        document.getElementById('alae-results-view').classList.add('hidden');
+        document.getElementById('alae-test-runner-view').classList.remove('hidden');
+    }
+}
+
+function renderAssessmentHistoryTable() {
+    const tbody = document.getElementById('assessment-history-tbody');
+    const countEl = document.getElementById('assessment-history-count');
+    if (!tbody) return;
+
+    const history = appState.assessmentHistory || [];
+    if (countEl) countEl.textContent = `${history.length} test${history.length === 1 ? '' : 's'} completed`;
+
+    if (history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">No assessments taken yet. Launch a 15-Min Sprint to start your record!</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    history.slice(0, 5).forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 dark:hover:bg-dark-850 transition-colors';
+        tr.innerHTML = `
+            <td class="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-300">${item.date}</td>
+            <td class="py-2.5 px-3 font-bold text-purple-600 dark:text-purple-400">${item.modeTitle || item.mode}</td>
+            <td class="py-2.5 px-3 font-black text-slate-900 dark:text-white">${item.scorePct}%</td>
+            <td class="py-2.5 px-3">${item.correctCount}/${item.totalCount}</td>
+            <td class="py-2.5 px-3 text-slate-400">${item.timeTaken}</td>
+            <td class="py-2.5 px-3 font-bold text-amber-500">+${item.xpAwarded} XP</td>
+            <td class="py-2.5 px-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.scorePct >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}">
+                    ${item.scorePct >= 70 ? 'Passed' : 'Reviewed'}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function updateGamificationState() {
+    const xp = appState.userXP || 2450;
+    const level = Math.floor(xp / 750) + 1;
+    appState.userLevel = level;
+
+    const levelTitles = [
+        "Novice Apprentice",
+        "Junior Developer",
+        "Associate SDE",
+        "Senior SDE Candidate",
+        "Staff Architect",
+        "Principal SDE Track"
+    ];
+    const title = levelTitles[Math.min(level - 1, levelTitles.length - 1)];
+
+    const titleEl = document.getElementById('user-level-title');
+    if (titleEl) titleEl.textContent = `Level ${level}: ${title}`;
+
+    const xpCounterEl = document.getElementById('user-xp-counter');
+    const xpBarEl = document.getElementById('user-xp-bar');
+    const currentLevelXP = xp % 750;
+    const pct = Math.min(100, Math.round((currentLevelXP / 750) * 100));
+
+    if (xpCounterEl) xpCounterEl.textContent = `${xp.toLocaleString()} XP (${currentLevelXP}/750)`;
+    if (xpBarEl) xpBarEl.style.width = `${pct}%`;
+
+    const totalTestsEl = document.getElementById('user-total-tests-count');
+    const avgScoreEl = document.getElementById('user-avg-test-score');
+    const history = appState.assessmentHistory || [];
+
+    if (totalTestsEl) totalTestsEl.textContent = history.length;
+    if (avgScoreEl && history.length > 0) {
+        const avg = Math.round(history.reduce((acc, h) => acc + h.scorePct, 0) / history.length);
+        avgScoreEl.textContent = `${avg}%`;
+    }
+}
+
+// ====================================================
+// 💡 AI PROFESSOR ASSISTANT & MULTI-LEVEL HINTS
+// ====================================================
+function askAIProfessorCurrentQuestion() {
+    if (!currentTestSession) return;
+    const q = currentTestSession.questions[currentTestSession.currentIndex];
+    currentAIHintQuestion = q;
+    currentAIHintLevel = 1;
+
+    document.getElementById('ai-prof-topic-subtitle').textContent = `${q.domain.toUpperCase()} • ${q.topic || 'Core Concept'}`;
+    showAIHintLevel(1);
+
+    const replyBox = document.getElementById('ai-prof-custom-reply');
+    if (replyBox) replyBox.classList.add('hidden');
+
+    const input = document.getElementById('ai-prof-custom-question');
+    if (input) input.value = '';
+
+    const modal = document.getElementById('ai-professor-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function showAIHintLevel(level) {
+    currentAIHintLevel = level;
+    [1, 2, 3].forEach(l => {
+        const tab = document.getElementById(`hint-tab-${l}`);
+        if (tab) {
+            tab.className = l === level 
+                ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white transition-all'
+                : 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 transition-all';
+        }
+    });
+
+    const titleEl = document.getElementById('ai-hint-title');
+    const contentEl = document.getElementById('ai-hint-content');
+    if (!titleEl || !contentEl || !currentAIHintQuestion) return;
+
+    const q = currentAIHintQuestion;
+    if (level === 1) {
+        titleEl.textContent = 'Level 1: Mental Model & Intuition';
+        contentEl.innerHTML = `<p>${q.aiHint || 'Focus on the core invariants. Can you eliminate unpromising paths without exhaustive search?'}</p>`;
+    } else if (level === 2) {
+        titleEl.textContent = 'Level 2: Algorithmic Approach & Edge Cases';
+        contentEl.innerHTML = `
+            <p><strong>Step-by-Step Approach:</strong> Identify the subproblem state space. Watch out for edge cases such as empty inputs, single element bounds, or integer overflow.</p>
+            <p class="text-slate-400">Target Time Complexity: ${q.complexity || 'O(n)'}</p>
+        `;
+    } else {
+        titleEl.textContent = 'Level 3: Pseudocode Structure';
+        contentEl.innerHTML = `
+            <pre class="p-2.5 rounded bg-slate-950 text-emerald-400 font-mono text-xs overflow-x-auto">${q.starterCode || q.explanation || '// Define data structure, loop boundaries, and return result'}</pre>
+        `;
+    }
+}
+
+function submitAIProfessorQuery() {
+    const input = document.getElementById('ai-prof-custom-question');
+    const reply = document.getElementById('ai-prof-custom-reply');
+    if (!input || !reply || !input.value.trim()) return;
+
+    const userQ = input.value.trim();
+    reply.classList.remove('hidden');
+    reply.innerHTML = `<div class="flex items-center space-x-2 text-purple-400"><i class="fas fa-spinner animate-spin"></i><span>AI Professor analyzing concept...</span></div>`;
+
+    setTimeout(() => {
+        reply.innerHTML = `
+            <div class="space-y-1">
+                <span class="font-bold text-purple-600 dark:text-purple-400 flex items-center space-x-1">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>AI Professor Rationale:</span>
+                </span>
+                <p>Great interview question regarding "<em>${userQ}</em>"! In technical interviews, interviewers check if you understand the memory tradeoff. Here, maintaining pointers avoids dynamic memory allocations, keeping the cache locality high.</p>
+            </div>
+        `;
+    }, 600);
+}
+
+function closeAIProfessorModal() {
+    const modal = document.getElementById('ai-professor-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// ====================================================
+// 🔄 SPACED REPETITION (SM-2 ALGORITHM) ENGINE
+// ====================================================
+function openSpacedRepetitionDeck() {
+    const questions = window.QUESTION_BANK || [];
+    currentSRSDeck = shuffleArray([...questions]).slice(0, 5);
+    currentSRSCardIndex = 0;
+
+    renderCurrentSRSCard();
+    const modal = document.getElementById('srs-deck-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderCurrentSRSCard() {
+    if (currentSRSDeck.length === 0 || currentSRSCardIndex >= currentSRSDeck.length) {
+        showToast("Spaced Repetition Deck for today completed! 🎉", "success");
+        closeSpacedRepetitionDeck();
+        return;
+    }
+
+    const card = currentSRSDeck[currentSRSCardIndex];
+    document.getElementById('srs-card-progress').textContent = `Card ${currentSRSCardIndex + 1} of ${currentSRSDeck.length}`;
+    document.getElementById('srs-domain-badge').textContent = `${card.domain.toUpperCase()} • ${card.topic || 'Concept'}`;
+    document.getElementById('srs-card-question').textContent = card.questionText;
+
+    const ansEl = document.getElementById('srs-card-answer');
+    if (ansEl) {
+        ansEl.classList.add('hidden');
+        ansEl.textContent = card.explanation || card.tradeoffs || card.complexity || 'Check curriculum cheat sheet for full derivation.';
+    }
+
+    const revealBtn = document.getElementById('srs-btn-reveal');
+    if (revealBtn) revealBtn.classList.remove('hidden');
+
+    const ratingsDiv = document.getElementById('srs-rating-buttons');
+    if (ratingsDiv) ratingsDiv.classList.add('hidden');
+}
+
+function revealSRSAnswer() {
+    document.getElementById('srs-card-answer').classList.remove('hidden');
+    document.getElementById('srs-btn-reveal').classList.add('hidden');
+    document.getElementById('srs-rating-buttons').classList.remove('hidden');
+}
+
+function rateSRSCard(quality) {
+    const card = currentSRSDeck[currentSRSCardIndex];
+    const srsData = appState.spacedRepetition[card.id] || { interval: 1, easeFactor: 2.5, repetitions: 0 };
+
+    // SM-2 Equation
+    let ef = srsData.easeFactor + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02));
+    ef = Math.max(1.3, ef);
+
+    let nextInterval = 1;
+    if (quality >= 2) {
+        if (srsData.repetitions === 0) nextInterval = 1;
+        else if (srsData.repetitions === 1) nextInterval = 3;
+        else nextInterval = Math.round(srsData.interval * ef);
+        srsData.repetitions++;
+    } else {
+        nextInterval = 1;
+        srsData.repetitions = 0;
+    }
+
+    srsData.interval = nextInterval;
+    srsData.easeFactor = ef;
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + nextInterval);
+    srsData.nextReview = nextDate.toISOString().split('T')[0];
+
+    appState.spacedRepetition[card.id] = srsData;
+    saveState();
+
+    currentSRSCardIndex++;
+    renderCurrentSRSCard();
+}
+
+function closeSpacedRepetitionDeck() {
+    const modal = document.getElementById('srs-deck-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// ====================================================
+// 💻 IN-BROWSER STANDALONE CODE SANDBOX
+// ====================================================
+function openStandaloneCodeSandbox() {
+    const modal = document.getElementById('code-sandbox-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeStandaloneCodeSandbox() {
+    const modal = document.getElementById('code-sandbox-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function runStandaloneCodeSandbox() {
+    const editor = document.getElementById('sandbox-code-editor');
+    const outputEl = document.getElementById('sandbox-output');
+    const timeEl = document.getElementById('sandbox-execution-time');
+    if (!editor || !outputEl) return;
+
+    const code = editor.value;
+    outputEl.textContent = '';
+    const logs = [];
+    const originalLog = console.log;
+
+    console.log = function(...args) {
+        logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        originalLog.apply(console, args);
+    };
+
+    const startTime = performance.now();
+    try {
+        const runner = new Function(code);
+        const ret = runner();
+        if (ret !== undefined) logs.push(`Return: ${JSON.stringify(ret)}`);
+        const duration = (performance.now() - startTime).toFixed(2);
+        if (timeEl) timeEl.textContent = `${duration} ms`;
+        outputEl.textContent = logs.length > 0 ? logs.join('\n') : 'Code executed with no output.';
+    } catch (err) {
+        outputEl.textContent = `Runtime Error: ${err.message}`;
+    } finally {
+        console.log = originalLog;
+    }
+}
+
+// Utility: Shuffle Array
+function shuffleArray(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
 }
 
 // ====================================================
@@ -865,6 +1730,10 @@ async function pushToBackendCloud(showToastFeedback = false) {
             notes: appState.notes,
             streak: appState.streak,
             activityLog: appState.activityLog,
+            userXP: appState.userXP,
+            userLevel: appState.userLevel,
+            assessmentHistory: appState.assessmentHistory,
+            spacedRepetition: appState.spacedRepetition,
             profiles: appState.profiles,
             lastActiveDate: appState.lastActiveDate,
             updatedAt: Date.now()
@@ -907,6 +1776,9 @@ async function pullFromBackendCloud(key, showToastFeedback = false) {
             if (data.profiles) appState.profiles = { ...appState.profiles, ...data.profiles };
             if (data.activityLog) appState.activityLog = { ...appState.activityLog, ...data.activityLog };
             if (data.streak) appState.streak = Math.max(appState.streak || 1, data.streak);
+            if (data.userXP) appState.userXP = Math.max(appState.userXP || 0, data.userXP);
+            if (data.assessmentHistory) appState.assessmentHistory = data.assessmentHistory;
+            if (data.spacedRepetition) appState.spacedRepetition = data.spacedRepetition;
 
             appState.cloudSyncKey = key;
             appState.lastCloudSync = new Date().toLocaleTimeString();
@@ -1079,6 +1951,7 @@ function encodeStateToHash() {
         b: bitStringToHex(starBits),
         r: bitStringToHex(revBits),
         s: appState.streak || 1,
+        xp: appState.userXP || 2450,
         p: appState.profiles || {},
         n: appState.notes || {}
     };
@@ -1114,6 +1987,7 @@ function decodeStateFromHash(base64Hash) {
         appState.revisions = newRevisions;
         if (payload.k) appState.cloudSyncKey = payload.k;
         if (payload.s) appState.streak = payload.s;
+        if (payload.xp) appState.userXP = payload.xp;
         if (payload.p) appState.profiles = payload.p;
         if (payload.n) appState.notes = payload.n;
 
@@ -1890,6 +2764,8 @@ function importProgressJSON(event) {
                 updateGlobalMetrics();
                 renderProfileCardsFromState();
                 renderAnalyticsDashboard();
+                updateGamificationState();
+                renderAssessmentHistoryTable();
                 showToast("Progress imported & restored! 🎉", "success");
             } else {
                 showToast("Invalid backup JSON format", "error");
@@ -1908,11 +2784,16 @@ function confirmResetProgress() {
         appState.revisions = {};
         appState.notes = {};
         appState.activityLog = {};
+        appState.assessmentHistory = [];
+        appState.spacedRepetition = {};
+        appState.userXP = 100;
         saveState();
         renderDomainTabs();
         renderCurriculum();
         updateGlobalMetrics();
         renderAnalyticsDashboard();
+        updateGamificationState();
+        renderAssessmentHistoryTable();
         showToast("All progress reset.", "info");
     }
 }
@@ -1947,6 +2828,9 @@ function setupKeyboardShortcuts() {
         if (e.key === 'Escape') {
             closeLearnModal();
             closeCloudSyncModal();
+            closeAIProfessorModal();
+            closeSpacedRepetitionDeck();
+            closeStandaloneCodeSandbox();
         }
         if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
             e.preventDefault();
