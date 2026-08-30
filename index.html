@@ -287,6 +287,52 @@
 
             </div>
 
+            <!-- SDE & Algorithmic Pattern Navigator Ribbon -->
+            <div class="bg-white dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-3 space-y-2">
+                <div class="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <span class="flex items-center space-x-1.5 text-purple-600 dark:text-purple-400">
+                        <i class="fas fa-cubes"></i>
+                        <span>Mastery Pattern Navigator (18,000+ Sourced Problems)</span>
+                    </span>
+                    <span class="text-[10px] text-slate-400">Filtered across LeetCode, Striver, NeetCode, Codeforces & TryHackMe</span>
+                </div>
+                <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs font-semibold scrollbar-none" id="pattern-pills-container">
+                    <button onclick="setPatternFilter('all')" id="pattern-btn-all" class="pattern-pill active px-3 py-1 rounded-lg bg-purple-600 text-white shadow-sm flex-shrink-0">
+                        🌟 All Patterns
+                    </button>
+                    <button onclick="setPatternFilter('Two Pointers')" id="pattern-btn-Two-Pointers" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        ⚡ Two Pointers & Window
+                    </button>
+                    <button onclick="setPatternFilter('Monotonic Stack')" id="pattern-btn-Monotonic-Stack" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        📈 Monotonic Stack
+                    </button>
+                    <button onclick="setPatternFilter('Binary Search')" id="pattern-btn-Binary-Search" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        🔍 Binary Search
+                    </button>
+                    <button onclick="setPatternFilter('Tree')" id="pattern-btn-Tree" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        🌳 Tree DFS/BFS
+                    </button>
+                    <button onclick="setPatternFilter('Graph')" id="pattern-btn-Graph" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        🕸️ Graph & Dijkstra
+                    </button>
+                    <button onclick="setPatternFilter('Dynamic Programming')" id="pattern-btn-Dynamic-Programming" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        🧩 DP & Knapsack
+                    </button>
+                    <button onclick="setPatternFilter('SQL')" id="pattern-btn-SQL" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        🗄️ SQL & Index Tuning
+                    </button>
+                    <button onclick="setPatternFilter('Concurrency')" id="pattern-btn-Concurrency" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        💻 OS Concurrency & Locks
+                    </button>
+                    <button onclick="setPatternFilter('Security')" id="pattern-btn-Security" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        🛡️ CTF & Web Exploits
+                    </button>
+                    <button onclick="setPatternFilter('Distributed')" id="pattern-btn-Distributed" class="pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0">
+                        ⚙️ Distributed Systems & Sharding
+                    </button>
+                </div>
+            </div>
+
             <!-- Sticky Domain Switcher Tabs -->
             <div class="bg-white dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-1.5 overflow-x-auto">
                 <div id="domains-tabs-container" class="flex whitespace-nowrap space-x-1.5 min-w-max">
@@ -1394,12 +1440,52 @@
                         <pre class="bg-slate-900 text-slate-100 text-xs font-mono p-4 rounded-xl overflow-x-auto border border-slate-800 shadow-inner relative"><code id="modal-code-snippet">// Code Template</code></pre>
                     </div>
 
-                    <!-- Top Curated Practice Problems -->
-                    <div class="space-y-3">
-                        <div class="flex items-center space-x-2 text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                            <i class="fas fa-laptop-code text-blue-500"></i>
-                            <span>Curated Practice Problems (6+ Platforms)</span>
+                    <!-- Pattern Blueprint & Company Target Card -->
+                    <div id="modal-pattern-box" class="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-6 h-6 rounded-lg bg-purple-200 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs">
+                                <i class="fas fa-cubes"></i>
+                            </span>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400">Mastery Pattern</span>
+                                <div id="modal-pattern-badge" class="font-extrabold text-slate-900 dark:text-white">Two Pointers & Sliding Window</div>
+                            </div>
                         </div>
+                        <div class="flex items-center space-x-1.5 text-right sm:text-left">
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400">Target Companies:</span>
+                            <span id="modal-company-tags" class="text-[11px] font-bold text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 border border-purple-200 dark:border-purple-800/40">Google • Meta • Amazon</span>
+                        </div>
+                    </div>
+
+                    <!-- Top Curated Practice Problems (8+ Sourced Platforms) -->
+                    <div class="space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center space-x-2 text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                                <i class="fas fa-laptop-code text-blue-500"></i>
+                                <span>Curated Practice Problems (8+ Sources)</span>
+                            </div>
+                            <span id="modal-problem-solved-counter" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">0/8 Problems Solved</span>
+                        </div>
+
+                        <!-- Platform Quick-Filter Tabs in Modal -->
+                        <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs font-semibold scrollbar-none" id="modal-problem-filter-tabs">
+                            <button onclick="filterModalProblems('all')" id="modal-filter-all" class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-emerald-500 dark:text-dark-950 shadow-sm flex-shrink-0 text-[11px]">
+                                All (8)
+                            </button>
+                            <button onclick="filterModalProblems('LeetCode')" id="modal-filter-LeetCode" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0 text-[11px]">
+                                🟡 LeetCode
+                            </button>
+                            <button onclick="filterModalProblems('TakeUForward')" id="modal-filter-TakeUForward" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0 text-[11px]">
+                                🚀 Striver Sheet
+                            </button>
+                            <button onclick="filterModalProblems('NeetCode')" id="modal-filter-NeetCode" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0 text-[11px]">
+                                🧠 NeetCode
+                            </button>
+                            <button onclick="filterModalProblems('TryHackMe')" id="modal-filter-TryHackMe" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0 text-[11px]">
+                                🚩 TryHackMe / Labs
+                            </button>
+                        </div>
+
                         <div id="modal-problems-list" class="grid grid-cols-1 gap-2.5">
                             <!-- Dynamic Problem Cards -->
                         </div>

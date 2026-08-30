@@ -38,10 +38,12 @@ let appState = {
     theme: 'dark',
     activeDomainId: 'dsa',
     activeFilter: 'all',
+    activePatternFilter: 'all',
     searchQuery: '',
     currentMainView: 'curriculum', // 'curriculum' | 'assessments' | 'analytics'
     currentTimeframe: 'daily',     // 'daily' | 'weekly' | 'monthly' | 'yearly'
     activityLog: {},               // { 'YYYY-MM-DD': count }
+    individualProblemsCompleted: {}, // { [problemId]: boolean }
     
     // ALAE v3.0 Intelligence & Gamification State
     userXP: 2450,
@@ -1734,6 +1736,7 @@ async function pushToBackendCloud(showToastFeedback = false) {
             userLevel: appState.userLevel,
             assessmentHistory: appState.assessmentHistory,
             spacedRepetition: appState.spacedRepetition,
+            individualProblemsCompleted: appState.individualProblemsCompleted,
             profiles: appState.profiles,
             lastActiveDate: appState.lastActiveDate,
             updatedAt: Date.now()
@@ -1773,6 +1776,7 @@ async function pullFromBackendCloud(key, showToastFeedback = false) {
             appState.bookmarks = { ...appState.bookmarks, ...(data.bookmarks || {}) };
             appState.revisions = { ...appState.revisions, ...(data.revisions || {}) };
             appState.notes = { ...appState.notes, ...(data.notes || {}) };
+            if (data.individualProblemsCompleted) appState.individualProblemsCompleted = { ...appState.individualProblemsCompleted, ...data.individualProblemsCompleted };
             if (data.profiles) appState.profiles = { ...appState.profiles, ...data.profiles };
             if (data.activityLog) appState.activityLog = { ...appState.activityLog, ...data.activityLog };
             if (data.streak) appState.streak = Math.max(appState.streak || 1, data.streak);
@@ -2375,7 +2379,18 @@ function shouldShowSubtopic(sub, topic, domain) {
         const matchesTopic = topic.topic.toLowerCase().includes(q);
         const matchesDomain = domain.name.toLowerCase().includes(q);
         const matchesSummary = sub.summary && sub.summary.toLowerCase().includes(q);
-        if (!matchesName && !matchesTopic && !matchesDomain && !matchesSummary) return false;
+        const matchesPattern = sub.pattern && sub.pattern.toLowerCase().includes(q);
+        if (!matchesName && !matchesTopic && !matchesDomain && !matchesSummary && !matchesPattern) return false;
+    }
+
+    if (appState.activePatternFilter && appState.activePatternFilter !== 'all') {
+        const patternQ = appState.activePatternFilter.toLowerCase();
+        const subPattern = (sub.pattern || '').toLowerCase();
+        const subName = sub.name.toLowerCase();
+        const topName = topic.topic.toLowerCase();
+        if (!subPattern.includes(patternQ) && !subName.includes(patternQ) && !topName.includes(patternQ)) {
+            return false;
+        }
     }
 
     if (appState.activeFilter === 'unsolved') return !appState.completed[sub.id];
@@ -2438,9 +2453,26 @@ function toggleRevision(subtopicId) {
     showToast(appState.revisions[subtopicId] ? "Flagged for Revision 🔄" : "Removed from Revision list", "info");
 }
 
+let activeModalProblemFilter = 'all';
+
+// Pattern Filter Controller
+function setPatternFilter(pattern) {
+    appState.activePatternFilter = pattern;
+    document.querySelectorAll('.pattern-pill').forEach(btn => {
+        btn.className = 'pattern-pill px-3 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0';
+    });
+    const activeId = pattern === 'all' ? 'pattern-btn-all' : `pattern-btn-${pattern.replace(/\s+/g, '-')}`;
+    const activeBtn = document.getElementById(activeId);
+    if (activeBtn) {
+        activeBtn.className = 'pattern-pill active px-3 py-1 rounded-lg bg-purple-600 text-white shadow-sm flex-shrink-0';
+    }
+    renderCurriculum();
+}
+
 // Learn Modal Handlers
 function openLearnModal(domainId, levelName, topicName, subtopicId) {
     currentModalSubtopicId = subtopicId;
+    activeModalProblemFilter = 'all';
 
     let subtopicObj = null;
     let foundDomain = null;
@@ -2465,6 +2497,12 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
     document.getElementById('modal-topic-badge').textContent = topicName;
     document.getElementById('modal-subtopic-title').textContent = subtopicObj.name;
 
+    // Pattern Blueprint & Company Tags
+    const patternBadge = document.getElementById('modal-pattern-badge');
+    const compTags = document.getElementById('modal-company-tags');
+    if (patternBadge) patternBadge.textContent = subtopicObj.pattern || 'Standard Engineering Pattern';
+    if (compTags) compTags.textContent = (subtopicObj.companies && subtopicObj.companies.length > 0) ? subtopicObj.companies.join(' • ') : 'Google • Meta • Amazon';
+
     updateModalStarRevisionButtons(subtopicId);
     document.getElementById('modal-concept-summary').innerHTML = subtopicObj.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
@@ -2482,34 +2520,8 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
 
     document.getElementById('modal-code-snippet').textContent = subtopicObj.codeSnippet;
 
-    const problemsContainer = document.getElementById('modal-problems-list');
-    problemsContainer.innerHTML = '';
-    subtopicObj.problems.forEach(prob => {
-        const diffColor = prob.difficulty === 'Easy' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                         (prob.difficulty === 'Hard' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300');
-
-        const card = document.createElement('a');
-        card.href = prob.url;
-        card.target = '_blank';
-        card.rel = 'noopener noreferrer';
-        card.className = 'flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-dark-950 dark:hover:bg-dark-850 border border-slate-200/80 dark:border-slate-800 transition-all group';
-        card.innerHTML = `
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                    <i class="fas fa-code-commit text-xs"></i>
-                </div>
-                <div>
-                    <h5 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">${prob.title}</h5>
-                    <span class="text-[10px] text-slate-400">${prob.platform}</span>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2">
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${diffColor}">${prob.difficulty}</span>
-                <i class="fas fa-arrow-up-right-from-square text-xs text-slate-400 group-hover:text-emerald-500 transition-colors"></i>
-            </div>
-        `;
-        problemsContainer.appendChild(card);
-    });
+    // Render Multi-Platform Problem List
+    renderModalProblemsList(subtopicObj);
 
     const resourcesContainer = document.getElementById('modal-resources-list');
     resourcesContainer.innerHTML = '';
@@ -2534,6 +2546,125 @@ function openLearnModal(domainId, levelName, topicName, subtopicId) {
 
     const modal = document.getElementById('learn-modal');
     modal.classList.remove('hidden');
+}
+
+function renderModalProblemsList(subtopicObj) {
+    if (!subtopicObj || !subtopicObj.problems) return;
+    const problemsContainer = document.getElementById('modal-problems-list');
+    if (!problemsContainer) return;
+
+    if (!appState.individualProblemsCompleted) appState.individualProblemsCompleted = {};
+
+    let solvedInSubtopic = 0;
+    subtopicObj.problems.forEach(p => {
+        if (appState.individualProblemsCompleted[p.id]) solvedInSubtopic++;
+    });
+
+    const counterEl = document.getElementById('modal-problem-solved-counter');
+    if (counterEl) {
+        counterEl.textContent = `${solvedInSubtopic}/${subtopicObj.problems.length} Problems Solved`;
+    }
+
+    const filtered = subtopicObj.problems.filter(prob => {
+        if (activeModalProblemFilter === 'all') return true;
+        return prob.platform.toLowerCase().includes(activeModalProblemFilter.toLowerCase());
+    });
+
+    problemsContainer.innerHTML = '';
+    filtered.forEach((prob, idx) => {
+        const isDone = !!appState.individualProblemsCompleted[prob.id];
+        const diffColor = prob.difficulty === 'Easy' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                         (prob.difficulty === 'Hard' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300');
+
+        const card = document.createElement('div');
+        card.className = `flex items-center justify-between p-3 rounded-xl border transition-all ${
+            isDone 
+                ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60' 
+                : 'bg-slate-50 hover:bg-slate-100 dark:bg-dark-950 dark:hover:bg-dark-850 border-slate-200/80 dark:border-slate-800'
+        }`;
+
+        card.innerHTML = `
+            <div class="flex items-center space-x-3 min-w-0 flex-1">
+                <input 
+                    type="checkbox" 
+                    id="chk-prob-${prob.id}" 
+                    class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-dark-900 cursor-pointer flex-shrink-0"
+                    ${isDone ? 'checked' : ''} 
+                    onchange="toggleIndividualProblem('${prob.id}', '${subtopicObj.id}')"
+                >
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate ${isDone ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${prob.title}</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
+                        <span class="font-bold text-purple-600 dark:text-purple-400">${prob.platform}</span>
+                        <span>•</span>
+                        <span>${(prob.companies || []).slice(0, 2).join(', ')}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 flex-shrink-0 ml-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${diffColor}">${prob.difficulty}</span>
+                <a href="${prob.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-slate-200 dark:hover:bg-dark-800 transition-colors" title="Open Practice Problem">
+                    <i class="fas fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+            </div>
+        `;
+        problemsContainer.appendChild(card);
+    });
+}
+
+function filterModalProblems(platform) {
+    activeModalProblemFilter = platform;
+    const filterTabs = ['all', 'LeetCode', 'TakeUForward', 'NeetCode', 'TryHackMe'];
+    filterTabs.forEach(tab => {
+        const btn = document.getElementById(`modal-filter-${tab}`);
+        if (btn) {
+            if (tab === platform) {
+                btn.className = 'px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-emerald-500 dark:text-dark-950 shadow-sm flex-shrink-0 text-[11px]';
+            } else {
+                btn.className = 'px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-700 flex-shrink-0 text-[11px]';
+            }
+        }
+    });
+
+    if (currentModalSubtopicId) {
+        for (const d of curriculumData.domains) {
+            for (const l of d.levels) {
+                for (const t of l.topics) {
+                    const found = t.subtopics.find(s => s.id === currentModalSubtopicId);
+                    if (found) {
+                        renderModalProblemsList(found);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+
+function toggleIndividualProblem(probId, subtopicId) {
+    if (!appState.individualProblemsCompleted) appState.individualProblemsCompleted = {};
+    const willBeDone = !appState.individualProblemsCompleted[probId];
+    appState.individualProblemsCompleted[probId] = willBeDone;
+
+    logTodayActivity(willBeDone);
+    saveState();
+
+    for (const d of curriculumData.domains) {
+        for (const l of d.levels) {
+            for (const t of l.topics) {
+                const found = t.subtopics.find(s => s.id === subtopicId);
+                if (found) {
+                    renderModalProblemsList(found);
+                    break;
+                }
+            }
+        }
+    }
+
+    showToast(willBeDone ? "Problem marked as solved! 🎯" : "Problem unchecked", "info");
 }
 
 function closeLearnModal() {

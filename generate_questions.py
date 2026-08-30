@@ -1,10 +1,8 @@
-/**
- * Autonomous Learning & Assessment Engine (ALAE v3.0)
- * Comprehensive Multi-Format Question Bank across 11 Engineering Domains
- * MCQs, In-Browser Live Coding Challenges, System Design Scenarios, & Behavioral Interviews
- */
+import json
 
-const QUESTION_BANK = [
+# Expansive ALAE v3.0 Question Bank covering all 11 Domains and Major Patterns
+questions = [
+    # 1. DSA - Two Pointers & Sliding Window
     {
         "id": "dsa_mcq_1",
         "domain": "dsa",
@@ -100,6 +98,8 @@ const QUESTION_BANK = [
         "explanation": "If a speed/capacity x is feasible, any speed > x is also feasible (monotonic boolean predicate). This binary partition enables O(log(Max-Min)) search.",
         "aiHint": "If a candidate answer works, will all larger candidate answers also work?"
     },
+
+    # Coding Challenges
     {
         "id": "dsa_coding_1",
         "domain": "dsa",
@@ -112,26 +112,10 @@ const QUESTION_BANK = [
         "functionName": "twoSum",
         "starterCode": "function twoSum(nums, target) {\n    // Write your O(n) hash map solution here\n    const map = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n        map.set(nums[i], i);\n    }\n    return [];\n}",
         "testCases": [
-            {
-                "input": "[[2,7,11,15], 9]",
-                "expected": "[0,1]",
-                "isHidden": false
-            },
-            {
-                "input": "[[3,2,4], 6]",
-                "expected": "[1,2]",
-                "isHidden": false
-            },
-            {
-                "input": "[[3,3], 6]",
-                "expected": "[0,1]",
-                "isHidden": true
-            },
-            {
-                "input": "[[-1,-2,-3,-4,-5], -8]",
-                "expected": "[2,4]",
-                "isHidden": true
-            }
+            { "input": "[[2,7,11,15], 9]", "expected": "[0,1]", "isHidden": False },
+            { "input": "[[3,2,4], 6]", "expected": "[1,2]", "isHidden": False },
+            { "input": "[[3,3], 6]", "expected": "[0,1]", "isHidden": True },
+            { "input": "[[-1,-2,-3,-4,-5], -8]", "expected": "[2,4]", "isHidden": True }
         ],
         "complexity": "O(n) Time | O(n) Space",
         "aiHint": "Store previously seen numbers in a Map as { value => index }. For the current number, check if (target - num) exists in your map."
@@ -148,31 +132,11 @@ const QUESTION_BANK = [
         "functionName": "lengthOfLongestSubstring",
         "starterCode": "function lengthOfLongestSubstring(s) {\n    let map = new Map();\n    let maxLen = 0;\n    let left = 0;\n    for (let right = 0; right < s.length; right++) {\n        if (map.has(s[right]) && map.get(s[right]) >= left) {\n            left = map.get(s[right]) + 1;\n        }\n        map.set(s[right], right);\n        maxLen = Math.max(maxLen, right - left + 1);\n    }\n    return maxLen;\n}",
         "testCases": [
-            {
-                "input": "[\"abcabcbb\"]",
-                "expected": "3",
-                "isHidden": false
-            },
-            {
-                "input": "[\"bbbbb\"]",
-                "expected": "1",
-                "isHidden": false
-            },
-            {
-                "input": "[\"pwwkew\"]",
-                "expected": "3",
-                "isHidden": false
-            },
-            {
-                "input": "[\"\"]",
-                "expected": "0",
-                "isHidden": true
-            },
-            {
-                "input": "[\"dvdf\"]",
-                "expected": "3",
-                "isHidden": true
-            }
+            { "input": "[\"abcabcbb\"]", "expected": "3", "isHidden": False },
+            { "input": "[\"bbbbb\"]", "expected": "1", "isHidden": False },
+            { "input": "[\"pwwkew\"]", "expected": "3", "isHidden": False },
+            { "input": "[\"\"]", "expected": "0", "isHidden": True },
+            { "input": "[\"dvdf\"]", "expected": "3", "isHidden": True }
         ],
         "complexity": "O(n) Time | O(min(m, n)) Space",
         "aiHint": "Use a sliding window [left, right]. Maintain a hash map of the last observed position of each character. When a duplicate is seen within the window, jump `left` to lastPosition + 1."
@@ -189,25 +153,15 @@ const QUESTION_BANK = [
         "functionName": "mergeIntervals",
         "starterCode": "function mergeIntervals(intervals) {\n    if (!intervals || intervals.length <= 1) return intervals;\n    intervals.sort((a, b) => a[0] - b[0]);\n    const res = [intervals[0]];\n    for (let i = 1; i < intervals.length; i++) {\n        const last = res[res.length - 1];\n        const curr = intervals[i];\n        if (curr[0] <= last[1]) {\n            last[1] = Math.max(last[1], curr[1]);\n        } else {\n            res.push(curr);\n        }\n    }\n    return res;\n}",
         "testCases": [
-            {
-                "input": "[[[1,3],[2,6],[8,10],[15,18]]]",
-                "expected": "[[1,6],[8,10],[15,18]]",
-                "isHidden": false
-            },
-            {
-                "input": "[[[1,4],[4,5]]]",
-                "expected": "[[1,5]]",
-                "isHidden": false
-            },
-            {
-                "input": "[[[1,4],[0,4]]]",
-                "expected": "[[0,4]]",
-                "isHidden": true
-            }
+            { "input": "[[[1,3],[2,6],[8,10],[15,18]]]", "expected": "[[1,6],[8,10],[15,18]]", "isHidden": False },
+            { "input": "[[[1,4],[4,5]]]", "expected": "[[1,5]]", "isHidden": False },
+            { "input": "[[[1,4],[0,4]]]", "expected": "[[0,4]]", "isHidden": True }
         ],
         "complexity": "O(n log n) Time | O(n) Space",
         "aiHint": "Sort intervals by their start times first. Then iterate through and merge whenever current start <= previous end."
     },
+
+    # 2. DBMS & SQL
     {
         "id": "dbms_mcq_1",
         "domain": "dbms",
@@ -246,6 +200,8 @@ const QUESTION_BANK = [
         "explanation": "Write Skew occurs when two transactions read overlapping data sets, make disjoint modifications based on stale premises, and commit without lock conflicts. Snapshot isolation detects write-write conflicts on the exact same row, but misses semantic write skew across distinct rows.",
         "aiHint": "Think of a scenario where two doctors try to take leave at the same time: both check count >= 2, and both update their own row."
     },
+
+    # 3. Operating Systems
     {
         "id": "os_mcq_1",
         "domain": "os",
@@ -284,6 +240,8 @@ const QUESTION_BANK = [
         "explanation": "The four Coffman conditions are: 1) Mutual Exclusion, 2) Hold and Wait, 3) No Preemption (resources CANNOT be preempted), and 4) Circular Wait. If preemption is allowed, deadlocks cannot persist.",
         "aiHint": "Can a deadlock survive if the OS can forcefully take a locked resource away from a process?"
     },
+
+    # 4. Computer Networks
     {
         "id": "net_mcq_1",
         "domain": "networks",
@@ -322,6 +280,8 @@ const QUESTION_BANK = [
         "explanation": "HTTP/2 breaks messages into independent binary frames and interleaves them across streams over a single TCP connection, allowing concurrent requests and responses without blocking one another.",
         "aiHint": "Think about how HTTP/2 divides streams into independent binary frames."
     },
+
+    # 5. System Design
     {
         "id": "sys_design_1",
         "domain": "backend",
@@ -356,6 +316,8 @@ const QUESTION_BANK = [
         ],
         "tradeoffs": "301 Permanent Redirects allow browser-side caching (reducing server load) but make click tracking impossible. 302 redirects hit the server each time, enabling real-time analytics at the cost of additional server bandwidth."
     },
+
+    # 6. Cybersecurity & CTF
     {
         "id": "sec_mcq_1",
         "domain": "security",
@@ -394,6 +356,8 @@ const QUESTION_BANK = [
         "explanation": "Perfect Forward Secrecy generates unique, short-lived session keys for every handshake. If the server's long-term certificate private key is leaked later, adversaries still cannot decrypt previously recorded traffic.",
         "aiHint": "What term describes the security property where past traffic remains safe if the private master key is exposed later?"
     },
+
+    # 7. AI & Machine Learning
     {
         "id": "aiml_mcq_1",
         "domain": "aiml",
@@ -413,6 +377,8 @@ const QUESTION_BANK = [
         "explanation": "Computing the Q * K^T matrix multiplication requires O(N^2 * D) operations, and multiplying the resulting N x N attention matrix by V requires another O(N^2 * D), making standard full self-attention quadratic O(N^2 * D) in sequence length.",
         "aiHint": "Consider the size of the attention weight matrix (Query x Key) for a sequence of length N."
     },
+
+    # 8. Behavioral & Leadership
     {
         "id": "beh_1",
         "domain": "dsa",
@@ -429,9 +395,23 @@ const QUESTION_BANK = [
             "Result: The outcome, post-launch performance, and team trust established."
         ]
     }
-];
+]
+
+js_code = f"""/**
+ * Autonomous Learning & Assessment Engine (ALAE v3.0)
+ * Comprehensive Multi-Format Question Bank across 11 Engineering Domains
+ * MCQs, In-Browser Live Coding Challenges, System Design Scenarios, & Behavioral Interviews
+ */
+
+const QUESTION_BANK = {json.dumps(questions, indent=4)};
 
 // Expose on global window object
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined') {{
     window.QUESTION_BANK = QUESTION_BANK;
-}
+}}
+"""
+
+with open("/Users/chandanmanne/Desktop/placement_prep/todo_pre_placement.github.io/questions.js", "w") as f:
+    f.write(js_code)
+
+print(f"✅ Successfully wrote {len(questions)} multi-format questions into questions.js!")
